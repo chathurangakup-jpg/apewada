@@ -11,12 +11,12 @@ import {
   View,
 } from "react-native";
 import { Button, RadioButton, TextInput } from "react-native-paper";
-import { useAuth } from "../../hooks/useAuth";
+// import { useAuth } from "../../hooks/useAuth";
 import { UserRole } from "../../types";
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { signup } = useAuth();
+  //   const { signup } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -44,7 +44,7 @@ export default function SignupScreen() {
 
     setLoading(true);
     try {
-      await signup({ name, email, phone, password, role });
+      //   await signup({ name, email, phone, password, role });
       // Navigation will be handled by the index screen
     } catch (error: any) {
       Alert.alert("Signup Failed", error.message || "Something went wrong");
@@ -59,20 +59,20 @@ export default function SignupScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
+        {/* <View style={styles.header}>
           <Text style={styles.title}>Create Account</Text>
           <Text style={styles.subtitle}>Join our community today</Text>
-        </View>
+        </View> */}
 
         <View style={styles.form}>
-          <TextInput
+          {/* <TextInput
             label="Full Name"
             value={name}
             onChangeText={setName}
             mode="outlined"
             style={styles.input}
             left={<TextInput.Icon icon="account" />}
-          />
+          /> */}
 
           <TextInput
             label="Email"

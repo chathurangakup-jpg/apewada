@@ -1,20 +1,20 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Redirect, Tabs } from "expo-router";
-import { useAuth } from "../../hooks/useAuth";
+import { Tabs } from "expo-router";
+// import { useAuth } from "../../hooks/useAuth";
 
 export default function CustomerLayout() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  // const { user, isAuthenticated, isLoading } = useAuth();
 
-  if (isLoading) return null;
+  // if (isLoading) return null;
 
-  // Customer routes are protected - must be logged in as customer
-  if (!isAuthenticated) {
-    return <Redirect href="/(auth)/login" />;
-  }
+  // // Customer routes are protected - must be logged in as customer
+  // if (!isAuthenticated) {
+  //   return <Redirect href="/(auth)/login" />;
+  // }
 
-  if (user?.role !== "customer") {
-    return <Redirect href="/(public)" />;
-  }
+  // if (user?.role !== "customer") {
+  //   return <Redirect href="/(public)" />;
+  // }
 
   return (
     <Tabs

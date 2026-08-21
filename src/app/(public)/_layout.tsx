@@ -7,9 +7,17 @@ export default function PublicLayout() {
         name="index"
         options={{
           headerShown: false,
+          title: "Splash",
+        }}
+      />
+      <Stack.Screen
+        name="home"
+        options={{
+          headerShown: false,
           title: "Home",
         }}
       />
+
       <Stack.Screen
         name="workers"
         options={{

@@ -11,11 +11,11 @@ import {
   View,
 } from "react-native";
 import { Button, TextInput } from "react-native-paper";
-import { useAuth } from "../../hooks/useAuth";
+// import { useAuth } from "../../hooks/useAuth";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { login } = useAuth();
+  // const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,7 +29,7 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      await login({ email, password });
+      // await login({ email, password });
       // Navigation will be handled by the index screen
     } catch (error) {
       Alert.alert("Login Failed", "Invalid email or password");

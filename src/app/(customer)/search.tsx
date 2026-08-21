@@ -19,7 +19,6 @@ import {
   Modal,
   Portal,
 } from "react-native-paper";
-import { useWorkers } from "../../hooks/useWorkers";
 import { WorkerSearchFilters } from "../../types";
 
 export default function SearchScreen() {
@@ -27,7 +26,6 @@ export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filters, setFilters] = useState<WorkerSearchFilters>({});
   const [showFilters, setShowFilters] = useState(false);
-  const { data: workers, isLoading, refetch } = useWorkers(filters);
 
   const filteredWorkers = workers?.filter(
     (worker) =>

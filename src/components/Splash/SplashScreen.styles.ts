@@ -1,0 +1,132 @@
+// app/components/SplashScreen/SplashScreen.styles.ts
+import { Dimensions, Platform, StyleSheet } from "react-native";
+
+const { width, height } = Dimensions.get("window");
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+  },
+  slide: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 34,
+  },
+  imageContainer: {
+    width: width * 0.8,
+    height: height * 0.35,
+    marginBottom: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+  },
+  contentContainer: {
+    width: "100%",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingBottom: 40,
+  },
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#FFF5F0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: "700",
+    color: "#1F2937",
+    textAlign: "center",
+    marginBottom: 12,
+    letterSpacing: 0.5,
+    lineHeight: 34,
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
+  },
+  description: {
+    fontSize: 16,
+    color: "#6B7280",
+    textAlign: "center",
+    lineHeight: 24,
+    letterSpacing: 0.3,
+    fontFamily: Platform.OS === "ios" ? "System" : "Roboto",
+  },
+  dotsContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "absolute",
+    bottom: height * 0.18,
+    width: "100%",
+    paddingHorizontal: 20,
+  },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginHorizontal: 6,
+    backgroundColor: "#D1D5DB",
+  },
+  footer: {
+    position: "absolute",
+    bottom: 40,
+    width: "100%",
+    paddingHorizontal: 24,
+  },
+  getStartedButton: {
+    backgroundColor: "#FF6B35",
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#FF6B35",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  getStartedText: {
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "600",
+    marginRight: 12,
+  },
+  skipButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 12,
+  },
+  skipText: {
+    color: "#6B7280",
+    fontSize: 16,
+    fontWeight: "500",
+    marginRight: 4,
+  },
+  indicatorContainer: {
+    position: "absolute",
+    top: 60,
+    right: 24,
+    backgroundColor: "rgba(0, 0, 0, 0.05)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  indicatorText: {
+    color: "#6B7280",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+});
