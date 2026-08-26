@@ -1,236 +1,28 @@
 // app/(public)/home.tsx
-
+import { CATEGORIES } from "@/constants/mockData";
+import { colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
+  ActivityIndicator,
   Dimensions,
   FlatList,
   Image,
   Modal,
   Pressable,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Card, Chip, Searchbar } from "react-native-paper";
+import { Button, Card, Chip } from "react-native-paper";
+import { useGetJobsQuery } from "../../../store/jobs/jobApi";
+import { useGetWorkersQuery } from "../../../store/workers/workerApi";
 
 const { width } = Dimensions.get("window");
-
-// ============================================================
-// MOCK DATA
-// ============================================================
-
-const mockWorkers = [
-  {
-    id: "worker-1",
-    user: {
-      id: "user-1",
-      name: "Kasun Perera",
-      avatar: "https://i.pravatar.cc/300?img=12",
-    },
-    profession: "Plumber",
-    category: "plumbing",
-    rating: 4.9,
-    totalJobs: 128,
-    verified: true,
-    location: {
-      district: "Colombo",
-      city: "Nugegoda",
-    },
-    services: [
-      { id: "s1", name: "Pipe Repair" },
-      { id: "s2", name: "Bathroom Plumbing" },
-      { id: "s3", name: "Water Tank Installation" },
-    ],
-  },
-  {
-    id: "worker-2",
-    user: {
-      id: "user-2",
-      name: "Nimal Fernando",
-      avatar: "https://i.pravatar.cc/300?img=13",
-    },
-    profession: "Electrician",
-    category: "electrical",
-    rating: 4.8,
-    totalJobs: 96,
-    verified: true,
-    location: {
-      district: "Kalutara",
-      city: "Panadura",
-    },
-    services: [
-      { id: "s4", name: "House Wiring" },
-      { id: "s5", name: "Electrical Repair" },
-      { id: "s6", name: "Light Installation" },
-    ],
-  },
-  {
-    id: "worker-3",
-    user: {
-      id: "user-3",
-      name: "Ruwan Silva",
-      avatar: "https://i.pravatar.cc/300?img=14",
-    },
-    profession: "Carpenter",
-    category: "carpentry",
-    rating: 4.7,
-    totalJobs: 84,
-    verified: true,
-    location: {
-      district: "Gampaha",
-      city: "Kadawatha",
-    },
-    services: [
-      { id: "s7", name: "Furniture Repair" },
-      { id: "s8", name: "Custom Furniture" },
-      { id: "s9", name: "Door Installation" },
-    ],
-  },
-  {
-    id: "worker-4",
-    user: {
-      id: "user-4",
-      name: "Chaminda Jayasuriya",
-      avatar: "https://i.pravatar.cc/300?img=15",
-    },
-    profession: "Gardener",
-    category: "gardening",
-    rating: 4.6,
-    totalJobs: 72,
-    verified: false,
-    location: {
-      district: "Colombo",
-      city: "Maharagama",
-    },
-    services: [
-      { id: "s10", name: "Garden Maintenance" },
-      { id: "s11", name: "Tree Trimming" },
-      { id: "s12", name: "Planting" },
-    ],
-  },
-  {
-    id: "worker-5",
-    user: {
-      id: "user-5",
-      name: "Tharindu Kumara",
-      avatar: "https://i.pravatar.cc/300?img=16",
-    },
-    profession: "Painter",
-    category: "painting",
-    rating: 4.8,
-    totalJobs: 65,
-    verified: true,
-    location: {
-      district: "Kandy",
-      city: "Peradeniya",
-    },
-    services: [
-      { id: "s13", name: "House Painting" },
-      { id: "s14", name: "Wall Painting" },
-      { id: "s15", name: "Interior Painting" },
-    ],
-  },
-  {
-    id: "worker-6",
-    user: {
-      id: "user-6",
-      name: "Saman Wijesinghe",
-      avatar: "https://i.pravatar.cc/300?img=17",
-    },
-    profession: "Grass Cutter",
-    category: "grass cutting",
-    rating: 4.5,
-    totalJobs: 53,
-    verified: false,
-    location: {
-      district: "Kalutara",
-      city: "Beruwala",
-    },
-    services: [
-      { id: "s16", name: "Grass Cutting" },
-      { id: "s17", name: "Garden Cleaning" },
-      { id: "s18", name: "Weed Removal" },
-    ],
-  },
-];
-
-const mockJobs = [
-  {
-    id: "job-1",
-    title: "Bathroom Plumbing Repair",
-    description:
-      "Need an experienced plumber to repair leaking pipes in the bathroom.",
-    category: "Plumbing",
-    budget: 15000,
-    location: {
-      district: "Colombo",
-      city: "Nugegoda",
-    },
-  },
-  {
-    id: "job-2",
-    title: "House Electrical Wiring",
-    description:
-      "Looking for an electrician to complete electrical wiring for a new house.",
-    category: "Electrical",
-    budget: 45000,
-    location: {
-      district: "Kalutara",
-      city: "Panadura",
-    },
-  },
-  {
-    id: "job-3",
-    title: "Custom Kitchen Cabinets",
-    description:
-      "Need a skilled carpenter to build and install custom kitchen cabinets.",
-    category: "Carpentry",
-    budget: 85000,
-    location: {
-      district: "Gampaha",
-      city: "Kadawatha",
-    },
-  },
-  {
-    id: "job-4",
-    title: "Garden Cleaning",
-    description: "Need someone to clean and maintain a residential garden.",
-    category: "Gardening",
-    budget: 12000,
-    location: {
-      district: "Colombo",
-      city: "Maharagama",
-    },
-  },
-  {
-    id: "job-5",
-    title: "House Exterior Painting",
-    description:
-      "Looking for an experienced painter to paint the exterior of a house.",
-    category: "Painting",
-    budget: 60000,
-    location: {
-      district: "Kandy",
-      city: "Peradeniya",
-    },
-  },
-  {
-    id: "job-6",
-    title: "Large Garden Grass Cutting",
-    description:
-      "Need regular grass cutting and garden cleaning for a large property.",
-    category: "Grass Cutting",
-    budget: 10000,
-    location: {
-      district: "Kalutara",
-      city: "Beruwala",
-    },
-  },
-];
 
 // ============================================================
 // DISTRICTS
@@ -269,114 +61,79 @@ const SRI_LANKA_DISTRICTS = [
 // CATEGORIES
 // ============================================================
 
-const CATEGORIES = [
-  {
-    id: "plumbing",
-    name: "Plumbing",
-    icon: "construct-outline",
-  },
-  {
-    id: "electrical",
-    name: "Electrical",
-    icon: "flash-outline",
-  },
-  {
-    id: "carpentry",
-    name: "Carpentry",
-    icon: "hammer-outline",
-  },
-  {
-    id: "cleaning",
-    name: "Cleaning",
-    icon: "sparkles-outline",
-  },
-  {
-    id: "painting",
-    name: "Painting",
-    icon: "color-palette-outline",
-  },
-  {
-    id: "gardening",
-    name: "Gardening",
-    icon: "leaf-outline",
-  },
-  {
-    id: "grass cutting",
-    name: "Grass Cutting",
-    icon: "cut-outline",
-  },
-  {
-    id: "carpenter",
-    name: "Carpenter",
-    icon: "build-outline",
-  },
-];
-
 // ============================================================
 // SCREEN
 // ============================================================
 
 export default function PublicHomeScreen() {
   const router = useRouter();
-
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
-
   const [selectedCategory, setSelectedCategory] = useState("All");
-
   const [isDistrictDropdownOpen, setIsDistrictDropdownOpen] = useState(false);
-
   const [searchQuery, setSearchQuery] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   // ==========================================================
-  // FILTER WORKERS
+  // REDUX QUERIES
   // ==========================================================
 
-  const filteredWorkers = mockWorkers.filter((worker) => {
-    const matchesDistrict =
-      selectedDistrict === "All Districts" ||
-      worker.location.district === selectedDistrict;
-
-    const matchesCategory =
-      selectedCategory === "All" ||
-      worker.category.toLowerCase() === selectedCategory.toLowerCase();
-
-    const query = searchQuery.trim().toLowerCase();
-
-    const matchesSearch =
-      query === "" ||
-      worker.user.name.toLowerCase().includes(query) ||
-      worker.profession.toLowerCase().includes(query) ||
-      worker.location.district.toLowerCase().includes(query);
-
-    return matchesDistrict && matchesCategory && matchesSearch;
+  // Use the main workers query so district + category are sent to
+  // the API together. This also works with the current mock API.
+  const {
+    data: workersData,
+    isLoading: isLoadingWorkers,
+    error: workersError,
+    refetch: refetchWorkers,
+  } = useGetWorkersQuery({
+    category: selectedCategory !== "All" ? selectedCategory : undefined,
+    district:
+      selectedDistrict !== "All Districts" ? selectedDistrict : undefined,
+    search: searchQuery || undefined,
+    limit: 20,
   });
 
-  // ==========================================================
-  // FILTER JOBS
-  // ==========================================================
-
-  const filteredJobs = mockJobs.filter((job) => {
-    const matchesDistrict =
-      selectedDistrict === "All Districts" ||
-      job.location.district === selectedDistrict;
-
-    const matchesCategory =
-      selectedCategory === "All" ||
-      job.category.toLowerCase() === selectedCategory.toLowerCase();
-
-    const query = searchQuery.trim().toLowerCase();
-
-    const matchesSearch =
-      query === "" ||
-      job.title.toLowerCase().includes(query) ||
-      job.description.toLowerCase().includes(query) ||
-      job.category.toLowerCase().includes(query);
-
-    return matchesDistrict && matchesCategory && matchesSearch;
+  // Use getJobs instead of getRecentJobs because getJobs already
+  // supports both category and district filtering.
+  const {
+    data: jobsData,
+    isLoading: isLoadingJobs,
+    error: jobsError,
+    refetch: refetchJobs,
+  } = useGetJobsQuery({
+    category: selectedCategory !== "All" ? selectedCategory : undefined,
+    district:
+      selectedDistrict !== "All Districts" ? selectedDistrict : undefined,
+    search: searchQuery || undefined,
+    status: "open",
+    sortBy: "createdAt",
+    sortOrder: "desc",
+    page: 1,
+    limit: 4,
   });
 
-  const featuredWorkers = filteredWorkers.slice(0, 5);
-  const recentJobs = filteredJobs.slice(0, 4);
+  // Workers are already filtered by the API. Sort them by rating
+  // for the home-page "Top Workers" section.
+  const filteredWorkers = useMemo(() => {
+    return [...(workersData?.workers ?? [])]
+      .sort((a, b) => b.rating - a.rating)
+      .slice(0, 5);
+  }, [workersData?.workers]);
+
+  const filteredJobs = jobsData?.jobs ?? [];
+
+  // ==========================================================
+  // REFRESH HANDLER
+  // ==========================================================
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+
+    try {
+      await Promise.all([refetchWorkers(), refetchJobs()]);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // ==========================================================
   // HANDLERS
@@ -402,7 +159,7 @@ export default function PublicHomeScreen() {
   };
 
   // ==========================================================
-  // DISTRICT MODAL
+  // RENDER HELPERS
   // ==========================================================
 
   const renderDistrictDropdown = () => (
@@ -422,7 +179,6 @@ export default function PublicHomeScreen() {
         >
           <View style={styles.dropdownHeader}>
             <Text style={styles.dropdownTitle}>Select District</Text>
-
             <TouchableOpacity onPress={() => setIsDistrictDropdownOpen(false)}>
               <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
@@ -448,7 +204,6 @@ export default function PublicHomeScreen() {
                 >
                   {item}
                 </Text>
-
                 {selectedDistrict === item && (
                   <Ionicons name="checkmark" size={20} color="#FF6B35" />
                 )}
@@ -461,19 +216,107 @@ export default function PublicHomeScreen() {
     </Modal>
   );
 
+  const renderWorkerCard = (worker: any) => (
+    <TouchableOpacity
+      key={worker.id}
+      style={styles.workerCard}
+      onPress={() => router.push(`/(public)/home/workers/${worker.id}`)}
+    >
+      <Image
+        source={{
+          uri: worker.user?.avatar || "https://i.pravatar.cc/150",
+        }}
+        style={styles.workerAvatar}
+      />
+      <Text style={styles.workerName}>{worker.user?.name}</Text>
+      <Text style={styles.workerProfession}>{worker.profession}</Text>
+      <View style={styles.workerRating}>
+        <Ionicons name="star" size={14} color="#FFB800" />
+        <Text style={styles.workerRatingText}>
+          {worker.rating?.toFixed(1) || "0.0"}
+        </Text>
+        <Text style={styles.workerJobs}>({worker.totalJobs || 0} jobs)</Text>
+      </View>
+      {worker.verified && (
+        <View style={styles.verifiedBadge}>
+          <Ionicons name="checkmark-circle" size={14} color="#34C759" />
+          <Text style={styles.verifiedText}>Verified</Text>
+        </View>
+      )}
+      <View style={styles.workerLocation}>
+        <Ionicons name="location" size={10} color="#6B7280" />
+        <Text style={styles.workerLocationText}>
+          {worker.location?.district}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderJobCard = (job: any) => (
+    <TouchableOpacity
+      key={job.id}
+      onPress={() => router.push(`/(public)/job/${job.id}`)}
+    >
+      <Card style={styles.jobCard}>
+        <Card.Content>
+          <View style={styles.jobHeader}>
+            <Text style={styles.jobTitle}>{job.title}</Text>
+            <Chip
+              mode="outlined"
+              style={styles.jobChip}
+              textStyle={styles.jobChipText}
+            >
+              {job.category}
+            </Chip>
+          </View>
+          <Text style={styles.jobDescription} numberOfLines={2}>
+            {job.description}
+          </Text>
+          <View style={styles.jobFooter}>
+            <View style={styles.jobMeta}>
+              <Ionicons name="location-outline" size={14} color="#6B7280" />
+              <Text style={styles.jobMetaText}>{job.location?.district}</Text>
+            </View>
+            <Text style={styles.jobBudget}>
+              Rs. {job.budget?.toLocaleString()}
+            </Text>
+          </View>
+        </Card.Content>
+      </Card>
+    </TouchableOpacity>
+  );
+
   // ==========================================================
   // RENDER
   // ==========================================================
 
+  const isLoading = isLoadingWorkers || isLoadingJobs;
+  const hasError = workersError || jobsError;
+
+  if (isLoading && !refreshing) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#FF6B35" />
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
+
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={styles.container}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+      }
+    >
       {/* ======================================================
           FILTER SECTION
       ====================================================== */}
 
       <View style={styles.filterSection}>
         <View style={styles.searchContainer}>
-          <Searchbar
+          {/* <Searchbar
             placeholder="Search workers or services..."
             onChangeText={setSearchQuery}
             value={searchQuery}
@@ -481,127 +324,65 @@ export default function PublicHomeScreen() {
             inputStyle={styles.searchInput}
             iconColor="#FF6B35"
             placeholderTextColor="#9CA3AF"
-          />
-        </View>
-
-        <View style={styles.filterRow}>
-          {/* District */}
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setIsDistrictDropdownOpen(true)}
-          >
-            <Ionicons name="location-outline" size={18} color="#FF6B35" />
-
-            <Text style={styles.filterButtonText}>
-              {selectedDistrict.length > 12
-                ? `${selectedDistrict.substring(0, 12)}...`
-                : selectedDistrict}
-            </Text>
-
-            <Ionicons name="chevron-down" size={16} color="#6B7280" />
-          </TouchableOpacity>
-
-          {/* Categories */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={styles.categoryFilterScroll}
-          >
-            <TouchableOpacity
-              style={[
-                styles.categoryFilterChip,
-                selectedCategory === "All" && styles.categoryFilterChipActive,
-              ]}
-              onPress={() => handleCategorySelect("All")}
-            >
-              <Text
-                style={[
-                  styles.categoryFilterText,
-                  selectedCategory === "All" && styles.categoryFilterTextActive,
-                ]}
-              >
-                All
-              </Text>
-            </TouchableOpacity>
-
-            {CATEGORIES.map((category) => {
-              const active = selectedCategory === category.name.toLowerCase();
-
-              return (
-                <TouchableOpacity
-                  key={category.id}
-                  style={[
-                    styles.categoryFilterChip,
-                    active && styles.categoryFilterChipActive,
-                  ]}
-                  onPress={() =>
-                    handleCategorySelect(category.name.toLowerCase())
-                  }
-                >
-                  <Ionicons
-                    name={category.icon as any}
-                    size={14}
-                    color={active ? "#FFFFFF" : "#FF6B35"}
-                  />
-
-                  <Text
-                    style={[
-                      styles.categoryFilterText,
-                      active && styles.categoryFilterTextActive,
-                    ]}
-                  >
-                    {category.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
+          /> */}
         </View>
       </View>
 
       {/* ======================================================
           HERO
       ====================================================== */}
-
-      <View style={styles.heroSection}>
-        <View style={styles.heroContent}>
-          <Text style={styles.heroTitle}>Find Trusted</Text>
-
-          <Text style={styles.heroTitleHighlight}>Service Workers</Text>
-
-          <Text style={styles.heroSubtitle}>
-            Connect with verified professionals for your home and business
-            needs.
-          </Text>
-
-          <View style={styles.heroButtons}>
-            <Button
-              mode="contained"
-              onPress={handleGetStarted}
-              style={styles.primaryButton}
-              labelStyle={styles.buttonLabel}
-              icon="arrow-right"
-            >
-              Get Started
-            </Button>
-
-            <Button
-              mode="outlined"
-              onPress={() => router.push("/(public)/workers")}
-              style={styles.secondaryButton}
-              labelStyle={styles.secondaryButtonLabel}
-            >
-              Browse Workers
-            </Button>
+      <View>
+        <View style={styles.heroSection}>
+          <View style={styles.heroContent}>
+            <Text style={styles.heroTitle}>Find Trusted</Text>
+            <Text style={styles.heroTitleHighlight}>Service Workers</Text>
+            <Text style={styles.heroSubtitle}>
+              Connect with verified professionals for your home and business
+              needs.
+            </Text>
           </View>
-        </View>
 
-        <Image
-          source={{
-            uri: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600",
-          }}
-          style={styles.heroImage}
-        />
+          <Image
+            source={{
+              uri: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=600",
+            }}
+            style={styles.heroImage}
+          />
+        </View>
+        <View style={styles.filterDistrict}>
+          {/* District */}
+          <TouchableOpacity
+            style={styles.filterButton}
+            onPress={() => setIsDistrictDropdownOpen(true)}
+          >
+            <Ionicons name="location-outline" size={18} color="#FF6B35" />
+            <Text style={styles.filterButtonText}>
+              {selectedDistrict.length > 12
+                ? `${selectedDistrict.substring(0, 12)}...`
+                : selectedDistrict}
+            </Text>
+            <Ionicons name="chevron-down" size={16} color="#6B7280" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.heroButtons}>
+          <Button
+            mode="contained"
+            onPress={handleGetStarted}
+            style={styles.primaryButton}
+            labelStyle={styles.buttonLabel}
+            icon="arrow-right"
+          >
+            Get Started
+          </Button>
+          <Button
+            mode="outlined"
+            onPress={() => router.push("/(public)/workers")}
+            style={styles.secondaryButton}
+            labelStyle={styles.secondaryButtonLabel}
+          >
+            Browse Workers
+          </Button>
+        </View>
       </View>
 
       {/* ======================================================
@@ -609,7 +390,17 @@ export default function PublicHomeScreen() {
       ====================================================== */}
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Popular Categories</Text>
+        <View style={styles.categoryTitleRow}>
+          <Text style={styles.sectionTitle}>Popular Categories</Text>
+          {selectedCategory !== "All" && (
+            <TouchableOpacity
+              onPress={() => setSelectedCategory("All")}
+              style={styles.clearCategoryButton}
+            >
+              <Text style={styles.clearCategoryText}>Clear</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         <ScrollView
           horizontal
@@ -619,16 +410,12 @@ export default function PublicHomeScreen() {
           {CATEGORIES.map((category) => (
             <TouchableOpacity
               key={category.id}
-              style={styles.categoryCard}
-              onPress={() => {
-                setSelectedCategory(category.name.toLowerCase());
-
-                router.push(
-                  `/(public)/workers?category=${encodeURIComponent(
-                    category.name,
-                  )}`,
-                );
-              }}
+              style={[
+                styles.categoryCard,
+                selectedCategory === category.name.toLowerCase() &&
+                  styles.categoryCardSelected,
+              ]}
+              onPress={() => handleCategorySelect(category.name.toLowerCase())}
             >
               <View style={styles.categoryIcon}>
                 <Ionicons
@@ -637,12 +424,39 @@ export default function PublicHomeScreen() {
                   color="#FF6B35"
                 />
               </View>
-
               <Text style={styles.categoryName}>{category.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
+
+      {/* ======================================================
+          ACTIVE FILTERS
+      ====================================================== */}
+
+      {(selectedDistrict !== "All Districts" || selectedCategory !== "All") && (
+        <View style={styles.activeFilters}>
+          {selectedDistrict !== "All Districts" && (
+            <Chip
+              mode="outlined"
+              onClose={() => setSelectedDistrict("All Districts")}
+              style={styles.activeFilterChip}
+            >
+              {selectedDistrict}
+            </Chip>
+          )}
+
+          {selectedCategory !== "All" && (
+            <Chip
+              mode="outlined"
+              onClose={() => setSelectedCategory("All")}
+              style={styles.activeFilterChip}
+            >
+              {selectedCategory}
+            </Chip>
+          )}
+        </View>
+      )}
 
       {/* ======================================================
           FEATURED WORKERS
@@ -655,71 +469,21 @@ export default function PublicHomeScreen() {
               ? `Top Workers in ${selectedDistrict}`
               : "Top Rated Workers"}
           </Text>
-
-          <TouchableOpacity onPress={() => router.push("/(public)/workers")}>
+          <TouchableOpacity
+            onPress={() => router.push(`/home/workers/workers`)}
+          >
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {featuredWorkers.length > 0 ? (
+        {filteredWorkers.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {featuredWorkers.map((worker) => (
-              <TouchableOpacity
-                key={worker.id}
-                style={styles.workerCard}
-                onPress={() => router.push(`/(public)/worker/${worker.id}`)}
-              >
-                <Image
-                  source={{
-                    uri: worker.user.avatar || "https://i.pravatar.cc/150",
-                  }}
-                  style={styles.workerAvatar}
-                />
-
-                <Text style={styles.workerName}>{worker.user.name}</Text>
-
-                <Text style={styles.workerProfession}>{worker.profession}</Text>
-
-                <View style={styles.workerRating}>
-                  <Ionicons name="star" size={14} color="#FFB800" />
-
-                  <Text style={styles.workerRatingText}>
-                    {worker.rating.toFixed(1)}
-                  </Text>
-
-                  <Text style={styles.workerJobs}>
-                    ({worker.totalJobs} jobs)
-                  </Text>
-                </View>
-
-                {worker.verified && (
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons
-                      name="checkmark-circle"
-                      size={14}
-                      color="#34C759"
-                    />
-
-                    <Text style={styles.verifiedText}>Verified</Text>
-                  </View>
-                )}
-
-                <View style={styles.workerLocation}>
-                  <Ionicons name="location" size={10} color="#6B7280" />
-
-                  <Text style={styles.workerLocationText}>
-                    {worker.location.district}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {filteredWorkers.map(renderWorkerCard)}
           </ScrollView>
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="people-outline" size={48} color="#D1D5DB" />
-
             <Text style={styles.emptyStateText}>No workers found</Text>
-
             <TouchableOpacity onPress={clearFilters}>
               <Text style={styles.emptyStateLink}>Clear filters</Text>
             </TouchableOpacity>
@@ -738,63 +502,17 @@ export default function PublicHomeScreen() {
               ? `Recent Jobs in ${selectedDistrict}`
               : "Recent Jobs"}
           </Text>
-
           <TouchableOpacity onPress={() => router.push("/(public)/jobs")}>
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
-        {recentJobs.length > 0 ? (
-          recentJobs.map((job) => (
-            <TouchableOpacity
-              key={job.id}
-              onPress={() => router.push(`/(public)/job/${job.id}`)}
-            >
-              <Card style={styles.jobCard}>
-                <Card.Content>
-                  <View style={styles.jobHeader}>
-                    <Text style={styles.jobTitle}>{job.title}</Text>
-
-                    <Chip
-                      mode="outlined"
-                      style={styles.jobChip}
-                      textStyle={styles.jobChipText}
-                    >
-                      {job.category}
-                    </Chip>
-                  </View>
-
-                  <Text style={styles.jobDescription} numberOfLines={2}>
-                    {job.description}
-                  </Text>
-
-                  <View style={styles.jobFooter}>
-                    <View style={styles.jobMeta}>
-                      <Ionicons
-                        name="location-outline"
-                        size={14}
-                        color="#6B7280"
-                      />
-
-                      <Text style={styles.jobMetaText}>
-                        {job.location.district}
-                      </Text>
-                    </View>
-
-                    <Text style={styles.jobBudget}>
-                      Rs. {job.budget.toLocaleString()}
-                    </Text>
-                  </View>
-                </Card.Content>
-              </Card>
-            </TouchableOpacity>
-          ))
+        {filteredJobs.length > 0 ? (
+          filteredJobs.map(renderJobCard)
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="briefcase-outline" size={48} color="#D1D5DB" />
-
             <Text style={styles.emptyStateText}>No jobs found</Text>
-
             <TouchableOpacity onPress={clearFilters}>
               <Text style={styles.emptyStateLink}>Clear filters</Text>
             </TouchableOpacity>
@@ -808,11 +526,9 @@ export default function PublicHomeScreen() {
 
       <View style={styles.ctaSection}>
         <Text style={styles.ctaTitle}>Ready to Get Started?</Text>
-
         <Text style={styles.ctaText}>
           Find trusted workers for your next home or business project.
         </Text>
-
         <Button
           mode="contained"
           onPress={handleGetStarted}
@@ -829,6 +545,12 @@ export default function PublicHomeScreen() {
 }
 
 // ============================================================
+// STYLES (same as before - keeping them for brevity)
+
+// Note: All the styles from the original file should be included here
+// I've omitted them for brevity but they remain the same
+
+// ============================================================
 // STYLES
 // ============================================================
 
@@ -839,34 +561,15 @@ const styles = StyleSheet.create({
   },
 
   filterSection: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#FF6B35",
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
   },
 
   searchContainer: {
     marginBottom: 12,
-  },
-
-  searchBar: {
-    backgroundColor: "#F3F4F6",
-    borderRadius: 12,
-    elevation: 0,
-    height: 48,
-  },
-
-  searchInput: {
-    fontSize: 14,
-    color: "#1F2937",
-  },
-
-  filterRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    marginTop: 40,
   },
 
   filterButton: {
@@ -874,10 +577,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F3F4F6",
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
+    paddingVertical: 10,
+    borderRadius: 10,
     gap: 6,
     minWidth: 100,
+    borderWidth: 1,
+    borderColor: colors.background.dark,
   },
 
   filterButtonText: {
@@ -885,35 +590,6 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     fontWeight: "500",
     flex: 1,
-  },
-
-  categoryFilterScroll: {
-    flex: 1,
-  },
-
-  categoryFilterChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F3F4F6",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginRight: 8,
-    gap: 4,
-  },
-
-  categoryFilterChipActive: {
-    backgroundColor: "#FF6B35",
-  },
-
-  categoryFilterText: {
-    fontSize: 12,
-    color: "#6B7280",
-    fontWeight: "500",
-  },
-
-  categoryFilterTextActive: {
-    color: "#FFFFFF",
   },
 
   modalOverlay: {
@@ -944,6 +620,9 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#1F2937",
   },
+  filterDistrict: {
+    paddingHorizontal: 20,
+  },
 
   dropdownItem: {
     flexDirection: "row",
@@ -972,14 +651,11 @@ const styles = StyleSheet.create({
   heroSection: {
     flexDirection: "row",
     padding: 20,
-    backgroundColor: "#FFFFFF",
-    minHeight: 200,
   },
 
   heroContent: {
     flex: 1,
     justifyContent: "center",
-    paddingTop: 28,
   },
 
   heroTitle: {
@@ -1006,6 +682,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: 16,
     gap: 12,
+
+    paddingHorizontal: 20,
   },
 
   primaryButton: {
@@ -1065,10 +743,45 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
+  categoryTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  clearCategoryButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+
+  clearCategoryText: {
+    color: "#FF6B35",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+
+  activeFilters: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+
+  activeFilterChip: {
+    backgroundColor: "#FFF7F2",
+  },
+
   categoryCard: {
     alignItems: "center",
     marginRight: 16,
     width: 80,
+  },
+
+  categoryCardSelected: {
+    borderWidth: 2,
+    borderColor: "#FF6B35",
+    backgroundColor: "#FFF7F2",
   },
 
   categoryIcon: {
@@ -1194,6 +907,7 @@ const styles = StyleSheet.create({
   jobChipText: {
     fontSize: 10,
     color: "#FF6B35",
+    paddingBottom: 10,
   },
 
   jobDescription: {
