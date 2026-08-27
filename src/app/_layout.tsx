@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import "../i18n";
 
 import { StoreProvider } from "./store/providers";
 

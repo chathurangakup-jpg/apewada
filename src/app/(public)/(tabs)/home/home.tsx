@@ -1,9 +1,11 @@
 // app/(public)/home.tsx
+import JobCard from "@/components/Jobs/JobCard";
 import { CATEGORIES } from "@/constants/mockData";
 import { colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Dimensions,
@@ -18,7 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, Card, Chip } from "react-native-paper";
+import { Button, Chip } from "react-native-paper";
 import { useGetJobsQuery } from "../../../store/jobs/jobApi";
 import { useGetWorkersQuery } from "../../../store/workers/workerApi";
 
@@ -67,6 +69,7 @@ const SRI_LANKA_DISTRICTS = [
 
 export default function PublicHomeScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isDistrictDropdownOpen, setIsDistrictDropdownOpen] = useState(false);
@@ -178,7 +181,7 @@ export default function PublicHomeScreen() {
           onPress={(event) => event.stopPropagation()}
         >
           <View style={styles.dropdownHeader}>
-            <Text style={styles.dropdownTitle}>Select District</Text>
+            <Text style={styles.dropdownTitle}>{t("jobs.selectDistrict")}</Text>
             <TouchableOpacity onPress={() => setIsDistrictDropdownOpen(false)}>
               <Ionicons name="close" size={24} color="#1F2937" />
             </TouchableOpacity>
@@ -252,39 +255,48 @@ export default function PublicHomeScreen() {
     </TouchableOpacity>
   );
 
-  const renderJobCard = (job: any) => (
-    <TouchableOpacity
-      key={job.id}
-      onPress={() => router.push(`/(public)/job/${job.id}`)}
-    >
-      <Card style={styles.jobCard}>
-        <Card.Content>
-          <View style={styles.jobHeader}>
-            <Text style={styles.jobTitle}>{job.title}</Text>
-            <Chip
-              mode="outlined"
-              style={styles.jobChip}
-              textStyle={styles.jobChipText}
-            >
-              {job.category}
-            </Chip>
-          </View>
-          <Text style={styles.jobDescription} numberOfLines={2}>
-            {job.description}
-          </Text>
-          <View style={styles.jobFooter}>
-            <View style={styles.jobMeta}>
-              <Ionicons name="location-outline" size={14} color="#6B7280" />
-              <Text style={styles.jobMetaText}>{job.location?.district}</Text>
-            </View>
-            <Text style={styles.jobBudget}>
-              Rs. {job.budget?.toLocaleString()}
-            </Text>
-          </View>
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
-  );
+  const renderJobCard = ({ item }: { item: any }) => {
+    return (
+      <JobCard
+        job={item}
+        onPress={() => router.push(`/(public)/home/jobs/jobs`)}
+      />
+    );
+  };
+
+  // const renderJobCard = (job: any) => (
+  //   <TouchableOpacity
+  //     key={job.id}
+  //     onPress={() => router.push(`/(public)/job/${job.id}`)}
+  //   >
+  //     <Card style={styles.jobCard}>
+  //       <Card.Content>
+  //         <View style={styles.jobHeader}>
+  //           <Text style={styles.jobTitle}>{job.title}</Text>
+  //           <Chip
+  //             mode="outlined"
+  //             style={styles.jobChip}
+  //             textStyle={styles.jobChipText}
+  //           >
+  //             {job.category}
+  //           </Chip>
+  //         </View>
+  //         <Text style={styles.jobDescription} numberOfLines={2}>
+  //           {job.description}
+  //         </Text>
+  //         <View style={styles.jobFooter}>
+  //           <View style={styles.jobMeta}>
+  //             <Ionicons name="location-outline" size={14} color="#6B7280" />
+  //             <Text style={styles.jobMetaText}>{job.location?.district}</Text>
+  //           </View>
+  //           <Text style={styles.jobBudget}>
+  //             Rs. {job.budget?.toLocaleString()}
+  //           </Text>
+  //         </View>
+  //       </Card.Content>
+  //     </Card>
+  //   </TouchableOpacity>
+  // );
 
   // ==========================================================
   // RENDER
@@ -334,12 +346,11 @@ export default function PublicHomeScreen() {
       <View>
         <View style={styles.heroSection}>
           <View style={styles.heroContent}>
-            <Text style={styles.heroTitle}>Find Trusted</Text>
-            <Text style={styles.heroTitleHighlight}>Service Workers</Text>
-            <Text style={styles.heroSubtitle}>
-              Connect with verified professionals for your home and business
-              needs.
+            <Text style={styles.heroTitle}>{t("home.heroTitleLine1")}</Text>
+            <Text style={styles.heroTitleHighlight}>
+              {t("home.heroTitleLine2")}
             </Text>
+            <Text style={styles.heroSubtitle}>{t("home.heroSubtitle")}</Text>
           </View>
 
           <Image
@@ -372,7 +383,7 @@ export default function PublicHomeScreen() {
             labelStyle={styles.buttonLabel}
             icon="arrow-right"
           >
-            Get Started
+            {t("home.getStarted")}
           </Button>
           <Button
             mode="outlined"
@@ -380,7 +391,7 @@ export default function PublicHomeScreen() {
             style={styles.secondaryButton}
             labelStyle={styles.secondaryButtonLabel}
           >
-            Browse Workers
+            {t("home.browseWorkers")}
           </Button>
         </View>
       </View>
@@ -391,13 +402,13 @@ export default function PublicHomeScreen() {
 
       <View style={styles.section}>
         <View style={styles.categoryTitleRow}>
-          <Text style={styles.sectionTitle}>Popular Categories</Text>
+          <Text style={styles.sectionTitle}>{t("home.popularCategories")}</Text>
           {selectedCategory !== "All" && (
             <TouchableOpacity
               onPress={() => setSelectedCategory("All")}
               style={styles.clearCategoryButton}
             >
-              <Text style={styles.clearCategoryText}>Clear</Text>
+              <Text style={styles.clearCategoryText}>{t("home.clear")}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -466,8 +477,8 @@ export default function PublicHomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             {selectedDistrict !== "All Districts"
-              ? `Top Workers in ${selectedDistrict}`
-              : "Top Rated Workers"}
+              ? t("home.topWorkersIn", { district: selectedDistrict })
+              : t("home.topRatedWorkers")}
           </Text>
           <TouchableOpacity
             onPress={() => router.push(`/home/workers/workers`)}
@@ -483,9 +494,13 @@ export default function PublicHomeScreen() {
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="people-outline" size={48} color="#D1D5DB" />
-            <Text style={styles.emptyStateText}>No workers found</Text>
+            <Text style={styles.emptyStateText}>
+              {t("home.noWorkersFound")}
+            </Text>
             <TouchableOpacity onPress={clearFilters}>
-              <Text style={styles.emptyStateLink}>Clear filters</Text>
+              <Text style={styles.emptyStateLink}>
+                {t("home.clearFilters")}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -499,22 +514,28 @@ export default function PublicHomeScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
             {selectedDistrict !== "All Districts"
-              ? `Recent Jobs in ${selectedDistrict}`
-              : "Recent Jobs"}
+              ? `${t("home.recentJobs")} ${t("common.in")} ${selectedDistrict}`
+              : t("home.recentJobs")}
           </Text>
-          <TouchableOpacity onPress={() => router.push("/(public)/jobs")}>
+          <TouchableOpacity
+            onPress={() => router.push("/(public)/home/jobs/jobs")}
+          >
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
         </View>
 
         {filteredJobs.length > 0 ? (
-          filteredJobs.map(renderJobCard)
+          filteredJobs
+            .slice(0, 5)
+            .map((job) => <JobCard key={job.id} job={job} />)
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="briefcase-outline" size={48} color="#D1D5DB" />
-            <Text style={styles.emptyStateText}>No jobs found</Text>
+            <Text style={styles.emptyStateText}>{t("home.noJobsFound")}</Text>
             <TouchableOpacity onPress={clearFilters}>
-              <Text style={styles.emptyStateLink}>Clear filters</Text>
+              <Text style={styles.emptyStateLink}>
+                {t("home.clearFilters")}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -525,17 +546,15 @@ export default function PublicHomeScreen() {
       ====================================================== */}
 
       <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>Ready to Get Started?</Text>
-        <Text style={styles.ctaText}>
-          Find trusted workers for your next home or business project.
-        </Text>
+        <Text style={styles.ctaTitle}>{t("home.readyCtaTitle")}</Text>
+        <Text style={styles.ctaText}>{t("home.readyCtaText")}</Text>
         <Button
           mode="contained"
           onPress={handleGetStarted}
           style={styles.ctaButton}
           labelStyle={styles.ctaButtonLabel}
         >
-          Sign Up Now
+          {t("home.signUpNow")}
         </Button>
       </View>
 

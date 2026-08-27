@@ -3,6 +3,7 @@ import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Image,
@@ -28,13 +29,15 @@ export default function WorkerDetailsScreen() {
     refetch,
   } = useGetWorkerByIdQuery(workerId as string);
 
+  const { t } = useTranslation();
+
   const [isExpanded, setIsExpanded] = useState(false);
 
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#FF6B35" />
-        <Text style={styles.loadingText}>Loading worker details...</Text>
+        <Text style={styles.loadingText}>{t("worker.loading")}</Text>
       </View>
     );
   }
@@ -43,9 +46,9 @@ export default function WorkerDetailsScreen() {
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text style={styles.errorText}>Failed to load worker details</Text>
+        <Text style={styles.errorText}>{t("worker.failed")}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
-          <Text style={styles.retryButtonText}>Retry</Text>
+          <Text style={styles.retryButtonText}>{t("worker.retry")}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -74,7 +77,7 @@ export default function WorkerDetailsScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header with Back Button */}
-      <Header title="Worker profile" />
+      <Header title={t("worker.profileTitle")} />
 
       {/* Profile Card */}
       <View style={styles.profileCard}>
@@ -90,7 +93,7 @@ export default function WorkerDetailsScreen() {
           {worker.verified && (
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={20} color="#34C759" />
-              <Text style={styles.verifiedText}>Verified</Text>
+              <Text style={styles.verifiedText}>{t("worker.verified")}</Text>
             </View>
           )}
         </View>
@@ -113,21 +116,21 @@ export default function WorkerDetailsScreen() {
                 {worker.rating?.toFixed(1) || "0.0"}
               </Text>
             </View>
-            <Text style={styles.statLabel}>Rating</Text>
+            <Text style={styles.statLabel}>{t("worker.rating")}</Text>
           </View>
 
           <View style={styles.statDivider} />
 
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{worker.totalJobs || 0}</Text>
-            <Text style={styles.statLabel}>Jobs Done</Text>
+            <Text style={styles.statLabel}>{t("worker.jobsDone")}</Text>
           </View>
 
           <View style={styles.statDivider} />
 
           <View style={styles.statItem}>
             <Text style={styles.statNumber}>{worker.experience || 0}+</Text>
-            <Text style={styles.statLabel}>Years Exp.</Text>
+            <Text style={styles.statLabel}>{t("worker.yearsExp")}</Text>
           </View>
 
           {worker.hourlyRate && (
@@ -135,7 +138,7 @@ export default function WorkerDetailsScreen() {
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statNumber}>Rs.{worker.hourlyRate}</Text>
-                <Text style={styles.statLabel}>Hourly Rate</Text>
+                <Text style={styles.statLabel}>{t("worker.hourlyRate")}</Text>
               </View>
             </>
           )}
@@ -145,7 +148,7 @@ export default function WorkerDetailsScreen() {
         <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.callButton} onPress={handleCall}>
             <Ionicons name="call-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.callButtonText}>Call</Text>
+            <Text style={styles.callButtonText}>{t("worker.call")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -153,11 +156,11 @@ export default function WorkerDetailsScreen() {
             onPress={handleMessage}
           >
             <Ionicons name="chatbubble-outline" size={20} color="#FF6B35" />
-            <Text style={styles.messageButtonText}>Message</Text>
+            <Text style={styles.messageButtonText}>{t("worker.message")}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.hireButton} onPress={handleHire}>
-            <Text style={styles.hireButtonText}>Hire Now</Text>
+            <Text style={styles.hireButtonText}>{t("worker.hireNow")}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -172,7 +175,7 @@ export default function WorkerDetailsScreen() {
                 size={22}
                 color="#FF6B35"
               />
-              <Text style={styles.sectionTitle}>About</Text>
+              <Text style={styles.sectionTitle}>{t("worker.about")}</Text>
             </View>
             <Text
               style={styles.description}
@@ -183,7 +186,7 @@ export default function WorkerDetailsScreen() {
             {worker.description.length > 120 && (
               <TouchableOpacity onPress={toggleDescription}>
                 <Text style={styles.readMore}>
-                  {isExpanded ? "Read Less" : "Read More"}
+                  {isExpanded ? t("worker.readLess") : t("worker.readMore")}
                 </Text>
               </TouchableOpacity>
             )}
@@ -197,7 +200,7 @@ export default function WorkerDetailsScreen() {
           <Card.Content>
             <View style={styles.sectionHeader}>
               <Ionicons name="construct-outline" size={22} color="#FF6B35" />
-              <Text style={styles.sectionTitle}>Services</Text>
+              <Text style={styles.sectionTitle}>{t("worker.services")}</Text>
             </View>
 
             {worker.services.map((service: any, index: number) => (
@@ -235,7 +238,7 @@ export default function WorkerDetailsScreen() {
           <Card.Content>
             <View style={styles.sectionHeader}>
               <Ionicons name="bulb-outline" size={22} color="#FF6B35" />
-              <Text style={styles.sectionTitle}>Skills</Text>
+              <Text style={styles.sectionTitle}>{t("worker.skills")}</Text>
             </View>
 
             <View style={styles.skillsContainer}>
@@ -255,7 +258,9 @@ export default function WorkerDetailsScreen() {
           <Card.Content>
             <View style={styles.sectionHeader}>
               <Ionicons name="time-outline" size={22} color="#FF6B35" />
-              <Text style={styles.sectionTitle}>Availability</Text>
+              <Text style={styles.sectionTitle}>
+                {t("worker.availability")}
+              </Text>
             </View>
 
             <View style={styles.availabilityStatus}>
@@ -273,8 +278,8 @@ export default function WorkerDetailsScreen() {
                 ]}
               />
               <Text style={styles.availabilityText}>
-                {worker.availability.status.charAt(0).toUpperCase() +
-                  worker.availability.status.slice(1)}
+                {t(`worker.${worker.availability.status}`) ||
+                  worker.availability.status}
               </Text>
             </View>
 
@@ -295,7 +300,9 @@ export default function WorkerDetailsScreen() {
           <Card.Content>
             <View style={styles.sectionHeader}>
               <Ionicons name="ribbon-outline" size={22} color="#FF6B35" />
-              <Text style={styles.sectionTitle}>Certifications</Text>
+              <Text style={styles.sectionTitle}>
+                {t("worker.certifications")}
+              </Text>
             </View>
 
             {worker.certifications.map((cert: string, index: number) => (
@@ -304,26 +311,6 @@ export default function WorkerDetailsScreen() {
                 <Text style={styles.certText}>{cert}</Text>
               </View>
             ))}
-          </Card.Content>
-        </Card>
-      )}
-
-      {/* Languages Section */}
-      {worker.languages && worker.languages.length > 0 && (
-        <Card style={styles.infoCard}>
-          <Card.Content>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="language-outline" size={22} color="#FF6B35" />
-              <Text style={styles.sectionTitle}>Languages</Text>
-            </View>
-
-            <View style={styles.languagesContainer}>
-              {worker.languages.map((lang: string) => (
-                <Chip key={lang} style={styles.languageChip}>
-                  {lang}
-                </Chip>
-              ))}
-            </View>
           </Card.Content>
         </Card>
       )}

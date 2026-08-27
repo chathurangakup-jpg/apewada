@@ -13,6 +13,7 @@ export interface Job {
   id: string;
   title: string;
   description: string;
+  image: string;
   category: string;
   budget: number;
   location: JobLocation;

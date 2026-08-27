@@ -1,8 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useTranslation } from "react-i18next";
 // import { useAuth } from "../../hooks/useAuth";
 
 export default function CustomerLayout() {
+  const { t } = useTranslation();
   // const { user, isAuthenticated, isLoading } = useAuth();
 
   // if (isLoading) return null;
@@ -31,7 +33,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="dashboard"
         options={{
-          title: "Dashboard",
+          title: t("tabs.dashboard"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home-outline" size={size} color={color} />
           ),
@@ -40,7 +42,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="jobs"
         options={{
-          title: "My Jobs",
+          title: t("tabs.myJobs"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="briefcase-outline" size={size} color={color} />
           ),
@@ -49,7 +51,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="reviews"
         options={{
-          title: "Reviews",
+          title: t("tabs.reviews"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="star-outline" size={size} color={color} />
           ),
@@ -58,7 +60,7 @@ export default function CustomerLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person-outline" size={size} color={color} />
           ),

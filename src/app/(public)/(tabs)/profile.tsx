@@ -1,7 +1,10 @@
 // app/(public)/profile.tsx
+import LanguageSelector from "@/components/Profile/LanguageSelector";
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Alert,
   Image,
@@ -17,6 +20,7 @@ import {
   View,
 } from "react-native";
 import { Button, Card, Chip, Divider } from "react-native-paper";
+import i18n from "../../../i18n";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
   selectCustomerProfile,
@@ -41,6 +45,7 @@ import {
 export default function ProfileScreen() {
   const router = useRouter();
   const dispatch = useAppDispatch();
+  const { t } = useTranslation();
 
   const user = useAppSelector(selectUser);
   const workerProfile = useAppSelector(selectWorkerProfile);
@@ -56,6 +61,8 @@ export default function ProfileScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
+  const [langModalVisible, setLangModalVisible] = useState(false);
+  const [currentLang, setCurrentLang] = useState(i18n.language || "en");
   const [editData, setEditData] = useState({
     name: user?.name || "",
     phone: user?.phone || "",
@@ -73,15 +80,15 @@ export default function ProfileScreen() {
 
   const handleLogout = () => {
     Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
+      t("profile.logoutConfirmTitle"),
+      t("profile.logoutConfirmBody"),
       [
         {
-          text: "Cancel",
+          text: t("common.cancel") || "Cancel",
           style: "cancel",
         },
         {
-          text: "Logout",
+          text: t("profile.logout"),
           style: "destructive",
           onPress: async () => {
             await dispatch(logout());
@@ -91,6 +98,37 @@ export default function ProfileScreen() {
       ],
       { cancelable: true },
     );
+  };
+
+  const LANGUAGE_KEY = "appLanguage";
+
+  const openLanguageModal = () => setLangModalVisible(true);
+
+  const changeLanguage = async (lang: string) => {
+    try {
+      await AsyncStorage.setItem(LANGUAGE_KEY, lang);
+      await i18n.changeLanguage(lang);
+      setCurrentLang(lang);
+
+      // persist to customer profile preferences if available
+      if (isCustomer && customerProfile) {
+        dispatch(
+          updateCustomerProfile({
+            customerId: customerProfile.id,
+            data: {
+              preferences: {
+                ...customerProfile.preferences,
+                language: lang,
+              },
+            },
+          }),
+        );
+      }
+    } catch (e) {
+      // ignore
+    } finally {
+      setLangModalVisible(false);
+    }
   };
 
   const handleEditProfile = () => {
@@ -134,9 +172,9 @@ export default function ProfileScreen() {
       }
 
       setEditModalVisible(false);
-      Alert.alert("Success", "Profile updated successfully");
+      Alert.alert(t("profile.success"), t("profile.profileUpdated"));
     } catch (error) {
-      Alert.alert("Error", "Failed to update profile");
+      Alert.alert(t("profile.error"), t("profile.profileUpdateFailed"));
     }
   };
 
@@ -149,21 +187,21 @@ export default function ProfileScreen() {
               <Text style={styles.statNumber}>
                 {customerProfile?.totalJobsPosted || 0}
               </Text>
-              <Text style={styles.statLabel}>Jobs Posted</Text>
+              <Text style={styles.statLabel}>{t("profile.jobsPosted")}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
                 Rs. {customerProfile?.totalSpent?.toLocaleString() || 0}
               </Text>
-              <Text style={styles.statLabel}>Total Spent</Text>
+              <Text style={styles.statLabel}>{t("profile.totalSpent")}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
                 {customerProfile?.averageRating?.toFixed(1) || "0.0"}
               </Text>
-              <Text style={styles.statLabel}>Rating</Text>
+              <Text style={styles.statLabel}>{t("profile.rating")}</Text>
             </View>
           </View>
         </Card.Content>
@@ -174,7 +212,7 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="location-outline" size={24} color="#FF6B35" />
-              <Text style={styles.infoTitle}>Address</Text>
+              <Text style={styles.infoTitle}>{t("profile.address")}</Text>
             </View>
             <Text style={styles.infoText}>
               {customerProfile.address.street}
@@ -191,7 +229,9 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="star-outline" size={24} color="#FF6B35" />
-              <Text style={styles.infoTitle}>Preferred Categories</Text>
+              <Text style={styles.infoTitle}>
+                {t("profile.preferredCategories")}
+              </Text>
             </View>
             <View style={styles.chipContainer}>
               {customerProfile.preferences.categories.map((category) => (
@@ -208,10 +248,12 @@ export default function ProfileScreen() {
         <Card.Content>
           <View style={styles.infoHeader}>
             <Ionicons name="notifications-outline" size={24} color="#FF6B35" />
-            <Text style={styles.infoTitle}>Preferences</Text>
+            <Text style={styles.infoTitle}>{t("profile.preferences")}</Text>
           </View>
           <View style={styles.preferenceRow}>
-            <Text style={styles.preferenceLabel}>Push Notifications</Text>
+            <Text style={styles.preferenceLabel}>
+              {t("profile.pushNotifications")}
+            </Text>
             <Switch
               value={customerProfile?.preferences?.notifications ?? true}
               onValueChange={(value) => {
@@ -233,13 +275,54 @@ export default function ProfileScreen() {
             />
           </View>
           <View style={styles.preferenceRow}>
-            <Text style={styles.preferenceLabel}>Language</Text>
-            <Text style={styles.preferenceValue}>
-              {customerProfile?.preferences?.language || "English"}
-            </Text>
+            <Text style={styles.preferenceLabel}>{t("profile.language")}</Text>
+            <TouchableOpacity
+              onPress={openLanguageModal}
+              style={{ paddingHorizontal: 8 }}
+            >
+              <Text style={styles.preferenceValue}>
+                {customerProfile?.preferences?.language ||
+                  currentLang ||
+                  t("common.english")}
+              </Text>
+            </TouchableOpacity>
           </View>
         </Card.Content>
       </Card>
+      {/* Language selection modal */}
+      <Modal
+        visible={langModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLangModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { padding: 16 }]}>
+            <Text style={[styles.modalTitle, { marginBottom: 12 }]}>
+              {" "}
+              {t("common.language")}{" "}
+            </Text>
+            <TouchableOpacity
+              style={{ paddingVertical: 12 }}
+              onPress={() => changeLanguage("en")}
+            >
+              <Text style={{ fontSize: 16 }}>{t("common.english")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ paddingVertical: 12 }}
+              onPress={() => changeLanguage("si")}
+            >
+              <Text style={{ fontSize: 16 }}>{t("common.sinhala")}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ paddingVertical: 12, marginTop: 8 }}
+              onPress={() => setLangModalVisible(false)}
+            >
+              <Text style={{ color: "#9CA3AF" }}>{t("common.cancel")}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 
@@ -252,28 +335,28 @@ export default function ProfileScreen() {
               <Text style={styles.statNumber}>
                 {workerProfile?.totalJobs || 0}
               </Text>
-              <Text style={styles.statLabel}>Jobs Done</Text>
+              <Text style={styles.statLabel}>{t("profile.jobsDone")}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
                 {workerProfile?.rating?.toFixed(1) || "0.0"}
               </Text>
-              <Text style={styles.statLabel}>Rating</Text>
+              <Text style={styles.statLabel}>{t("profile.rating")}</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
                 {workerProfile?.experience || 0}+
               </Text>
-              <Text style={styles.statLabel}>Years</Text>
+              <Text style={styles.statLabel}>{t("profile.years")}</Text>
             </View>
           </View>
           {workerProfile?.verified && (
             <View style={styles.verifiedBadgeContainer}>
               <Ionicons name="checkmark-circle" size={16} color="#34C759" />
               <Text style={styles.verifiedBadgeText}>
-                Verified Professional
+                {t("profile.verifiedProfessional")}
               </Text>
             </View>
           )}
@@ -285,7 +368,9 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="location-outline" size={24} color="#FF6B35" />
-              <Text style={styles.infoTitle}>Service Location</Text>
+              <Text style={styles.infoTitle}>
+                {t("profile.serviceLocation")}
+              </Text>
             </View>
             <Text style={styles.infoText}>
               {workerProfile.location.address || ""}
@@ -302,7 +387,7 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="construct-outline" size={24} color="#FF6B35" />
-              <Text style={styles.infoTitle}>Services</Text>
+              <Text style={styles.infoTitle}>{t("profile.services")}</Text>
             </View>
             {workerProfile.services.map((service) => (
               <View key={service.id} style={styles.serviceItem}>
@@ -334,7 +419,7 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="time-outline" size={24} color="#FF6B35" />
-              <Text style={styles.infoTitle}>Availability</Text>
+              <Text style={styles.infoTitle}>{t("profile.availability")}</Text>
             </View>
             <View style={styles.availabilityStatus}>
               <View
@@ -369,7 +454,7 @@ export default function ProfileScreen() {
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="bulb-outline" size={24} color="#FF6B35" />
-              <Text style={styles.infoTitle}>Skills</Text>
+              <Text style={styles.infoTitle}>{t("profile.skills")}</Text>
             </View>
             <View style={styles.chipContainer}>
               {workerProfile.skills.map((skill) => (
@@ -391,7 +476,7 @@ export default function ProfileScreen() {
                 size={24}
                 color="#FF6B35"
               />
-              <Text style={styles.infoTitle}>About Me</Text>
+              <Text style={styles.infoTitle}>{t("profile.aboutMe")}</Text>
             </View>
             <Text style={styles.descriptionText}>
               {workerProfile.description}
@@ -413,9 +498,9 @@ export default function ProfileScreen() {
       <View style={styles.header}>
         <View style={styles.headerContent}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color="#1F2937" />
+            {/* <Ionicons name="arrow-back" size={24} color="#1F2937" /> */}
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Profile</Text>
+          <Text style={styles.headerTitle}>{t("profile.myProfile")}</Text>
           <TouchableOpacity onPress={handleEditProfile}>
             <Ionicons name="create-outline" size={24} color="#FF6B35" />
           </TouchableOpacity>
@@ -468,23 +553,29 @@ export default function ProfileScreen() {
           onPress={handleEditProfile}
         >
           <Ionicons name="create-outline" size={20} color="#FF6B35" />
-          <Text style={styles.actionButtonText}>Edit Profile</Text>
+          <Text style={styles.actionButtonText}>{t("profile.edit")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.actionButton}
-          onPress={() => router.push("/(public)/settings")}
+          onPress={openLanguageModal}
         >
           <Ionicons name="settings-outline" size={20} color="#FF6B35" />
-          <Text style={styles.actionButtonText}>Settings</Text>
+          <Text style={styles.actionButtonText}>{t("profile.settings")}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.actionButton, styles.logoutButton]}
           onPress={handleLogout}
         >
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
-          <Text style={styles.logoutButtonText}>Logout</Text>
+          <Text style={styles.logoutButtonText}>{t("profile.logout")}</Text>
         </TouchableOpacity>
       </View>
+      <LanguageSelector
+        visible={langModalVisible}
+        currentLanguage={currentLang}
+        onClose={() => setLangModalVisible(false)}
+        onChangeLanguage={changeLanguage}
+      />
 
       {/* Edit Profile Modal */}
       <Modal
@@ -496,7 +587,7 @@ export default function ProfileScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit Profile</Text>
+              <Text style={styles.modalTitle}>{t("profile.editProfile")}</Text>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Ionicons name="close" size={24} color="#1F2937" />
               </TouchableOpacity>
@@ -504,26 +595,26 @@ export default function ProfileScreen() {
 
             <ScrollView style={styles.modalBody}>
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Name</Text>
+                <Text style={styles.inputLabel}>{t("profile.name")}</Text>
                 <TextInput
                   style={styles.input}
                   value={editData.name}
                   onChangeText={(text) =>
                     setEditData({ ...editData, name: text })
                   }
-                  placeholder="Your name"
+                  placeholder={t("profile.name")}
                 />
               </View>
 
               <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Phone</Text>
+                <Text style={styles.inputLabel}>{t("profile.phone")}</Text>
                 <TextInput
                   style={styles.input}
                   value={editData.phone}
                   onChangeText={(text) =>
                     setEditData({ ...editData, phone: text })
                   }
-                  placeholder="Phone number"
+                  placeholder={t("profile.phone")}
                   keyboardType="phone-pad"
                 />
               </View>
@@ -531,40 +622,46 @@ export default function ProfileScreen() {
               {isWorker && (
                 <>
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Profession</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("profile.profession")}
+                    </Text>
                     <TextInput
                       style={styles.input}
                       value={editData.profession}
                       onChangeText={(text) =>
                         setEditData({ ...editData, profession: text })
                       }
-                      placeholder="Your profession"
+                      placeholder={t("profile.profession")}
                     />
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Description</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("profile.description")}
+                    </Text>
                     <TextInput
                       style={[styles.input, styles.textArea]}
                       value={editData.description}
                       onChangeText={(text) =>
                         setEditData({ ...editData, description: text })
                       }
-                      placeholder="Tell us about yourself"
+                      placeholder={t("profile.description")}
                       multiline
                       numberOfLines={4}
                     />
                   </View>
 
                   <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>Hourly Rate (Rs.)</Text>
+                    <Text style={styles.inputLabel}>
+                      {t("profile.hourlyRate")}
+                    </Text>
                     <TextInput
                       style={styles.input}
                       value={editData.hourlyRate}
                       onChangeText={(text) =>
                         setEditData({ ...editData, hourlyRate: text })
                       }
-                      placeholder="Your hourly rate"
+                      placeholder={t("profile.hourlyRate")}
                       keyboardType="numeric"
                     />
                   </View>
@@ -578,7 +675,7 @@ export default function ProfileScreen() {
                 loading={isLoading}
                 disabled={isLoading}
               >
-                Save Changes
+                {t("profile.saveChanges")}
               </Button>
             </ScrollView>
           </View>

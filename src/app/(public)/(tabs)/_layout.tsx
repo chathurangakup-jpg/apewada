@@ -1,16 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
+import { useTranslation } from "react-i18next";
 
 export default function TabsLayout() {
+  const { t } = useTranslation();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "white",
-          borderTopColor: "#E5E7EB",
+          borderTopColor: "#FF6B35",
         },
-        tabBarActiveTintColor: "#6366F1",
+        tabBarActiveTintColor: "#FF6B35",
         tabBarInactiveTintColor: "#9CA3AF",
       }}
     >
@@ -18,7 +20,7 @@ export default function TabsLayout() {
         name="home"
         options={{
           headerShown: false,
-          title: "Home",
+          title: t("tabs.home"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="home" size={size} color={color} />
           ),
@@ -28,7 +30,7 @@ export default function TabsLayout() {
         name="wallet"
         options={{
           headerShown: false,
-          title: "Wallet",
+          title: t("tabs.wallet"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="wallet" size={size} color={color} />
           ),
@@ -37,7 +39,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="history"
         options={{
-          title: "History",
+          title: t("tabs.history"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="time" size={size} color={color} />
           ),
@@ -46,7 +48,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="profile"
         options={{
-          title: "Profile",
+          title: t("tabs.profile"),
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="person" size={size} color={color} />
           ),

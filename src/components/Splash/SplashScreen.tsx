@@ -2,6 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Animated,
   Dimensions,
@@ -35,30 +36,28 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
 
   const router = useRouter();
+  const { t } = useTranslation();
 
   const slides: SlideData[] = [
     {
       id: "1",
       image: require("../../../assets/images/splash_img1.png"), // Replace with your actual image
-      title: "Connect with Trusted Professionals",
-      description:
-        "Find verified plumbers, carpenters, grasscutters, and more. All skilled workers at your fingertips.",
+      title: t("splash.title1"),
+      description: t("splash.desc1"),
       icon: "people-outline",
     },
     {
       id: "2",
       image: require("../../../assets/images/splash_img2.png"), // Replace with your actual image
-      title: "For Workers & Customers Alike",
-      description:
-        "Workers grow your business with new clients. Customers get quality service with verified reviews.",
+      title: t("splash.title2"),
+      description: t("splash.desc2"),
       icon: "briefcase-outline",
     },
     {
       id: "3",
       image: require("../../../assets/images/splash_img3.png"), // Replace with your actual image
-      title: "Real Reviews, Real Trust",
-      description:
-        "Read authentic reviews from real customers. Share your experience and help others make informed choices.",
+      title: t("splash.title3"),
+      description: t("splash.desc3"),
       icon: "star-outline",
     },
   ];
@@ -169,7 +168,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
   };
 
   const handleGetStarted = () => {
-    router.push("/(public)/home");
+    router.push("/(public)/language");
   };
 
   return (
@@ -200,7 +199,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
             onPress={handleGetStarted}
             activeOpacity={0.8}
           >
-            <Text style={styles.getStartedText}>Get Started</Text>
+            <Text style={styles.getStartedText}>{t("splash.getStarted")}</Text>
             <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
           </TouchableOpacity>
         ) : (
@@ -213,7 +212,7 @@ const SplashScreen: React.FC<SplashScreenProps> = ({ onFinish }) => {
               });
             }}
           >
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>{t("splash.skip")}</Text>
             <Ionicons name="chevron-forward" size={20} color="#6B7280" />
           </TouchableOpacity>
         )}

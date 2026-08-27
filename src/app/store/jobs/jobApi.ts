@@ -17,12 +17,17 @@ const MOCK_JOBS: Job[] = [
       "Need an experienced plumber to repair leaking pipes in the bathroom.",
     category: "Plumbing",
     budget: 15000,
-    location: { district: "Colombo", city: "Nugegoda" },
+    image: "https://images.unsplash.com/photo-1585704032915-c3400ca199e7?w=800",
+    location: {
+      district: "Colombo",
+      city: "Nugegoda",
+    },
     clientId: "client-1",
     status: "open",
     createdAt: "2024-01-15T10:00:00Z",
     updatedAt: "2024-01-15T10:00:00Z",
   },
+
   {
     id: "job-2",
     title: "House Electrical Wiring",
@@ -30,12 +35,17 @@ const MOCK_JOBS: Job[] = [
       "Looking for an electrician to complete electrical wiring for a new house.",
     category: "Electrical",
     budget: 45000,
-    location: { district: "Kalutara", city: "Panadura" },
+    image: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=800",
+    location: {
+      district: "Kalutara",
+      city: "Panadura",
+    },
     clientId: "client-2",
     status: "open",
     createdAt: "2024-01-16T14:30:00Z",
     updatedAt: "2024-01-16T14:30:00Z",
   },
+
   {
     id: "job-3",
     title: "Custom Kitchen Cabinets",
@@ -43,24 +53,34 @@ const MOCK_JOBS: Job[] = [
       "Need a skilled carpenter to build and install custom kitchen cabinets.",
     category: "Carpentry",
     budget: 85000,
-    location: { district: "Gampaha", city: "Kadawatha" },
+    image: "https://images.unsplash.com/photo-1556911220-e15b29be8c8f?w=800",
+    location: {
+      district: "Gampaha",
+      city: "Kadawatha",
+    },
     clientId: "client-3",
     status: "open",
     createdAt: "2024-01-17T09:15:00Z",
     updatedAt: "2024-01-17T09:15:00Z",
   },
+
   {
     id: "job-4",
     title: "Garden Cleaning",
     description: "Need someone to clean and maintain a residential garden.",
     category: "Gardening",
     budget: 12000,
-    location: { district: "Colombo", city: "Maharagama" },
+    image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800",
+    location: {
+      district: "Colombo",
+      city: "Maharagama",
+    },
     clientId: "client-4",
     status: "open",
     createdAt: "2024-01-18T16:45:00Z",
     updatedAt: "2024-01-18T16:45:00Z",
   },
+
   {
     id: "job-5",
     title: "House Exterior Painting",
@@ -68,12 +88,17 @@ const MOCK_JOBS: Job[] = [
       "Looking for an experienced painter to paint the exterior of a house.",
     category: "Painting",
     budget: 60000,
-    location: { district: "Kandy", city: "Peradeniya" },
+    image: "https://images.unsplash.com/photo-1562259949-e8e7689d7828?w=800",
+    location: {
+      district: "Kandy",
+      city: "Peradeniya",
+    },
     clientId: "client-5",
     status: "open",
     createdAt: "2024-01-19T11:20:00Z",
     updatedAt: "2024-01-19T11:20:00Z",
   },
+
   {
     id: "job-6",
     title: "Large Garden Grass Cutting",
@@ -81,7 +106,11 @@ const MOCK_JOBS: Job[] = [
       "Need regular grass cutting and garden cleaning for a large property.",
     category: "Grass Cutting",
     budget: 10000,
-    location: { district: "Kalutara", city: "Beruwala" },
+    image: "https://images.unsplash.com/photo-1558904541-efa843a96f01?w=800",
+    location: {
+      district: "Kalutara",
+      city: "Beruwala",
+    },
     clientId: "client-6",
     status: "open",
     createdAt: "2024-01-20T08:00:00Z",
