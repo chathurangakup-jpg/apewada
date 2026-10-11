@@ -20,10 +20,13 @@ import {
   View,
 } from "react-native";
 import { Button, Chip } from "react-native-paper";
+import { selectApiAuthUser } from "../../../store/auth/authSelector";
 import { selectHomeState } from "../../../store/home/homeSelector";
 import { HomeCategory, HomeWorker } from "../../../store/home/homeServices";
 import { fetchHomeData } from "../../../store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
+import { selectCurrentUser } from "../../../store/profile/profileSelector";
+import { fetchCurrentProfile } from "../../../store/profile/profileThunk";
 
 const { width } = Dimensions.get("window");
 
@@ -74,6 +77,9 @@ export default function PublicHomeScreen() {
   const dispatch = useAppDispatch();
   const { categories, topRatedWorkers, recentJobs, isLoading, error } =
     useAppSelector(selectHomeState);
+  const apiAuthUser = useAppSelector(selectApiAuthUser);
+  const profileUser = useAppSelector(selectCurrentUser);
+  const isAuthenticated = Boolean(apiAuthUser || profileUser);
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isDistrictDropdownOpen, setIsDistrictDropdownOpen] = useState(false);
@@ -82,6 +88,7 @@ export default function PublicHomeScreen() {
 
   useEffect(() => {
     dispatch(fetchHomeData());
+    dispatch(fetchCurrentProfile());
   }, [dispatch]);
 
   const filteredWorkers = useMemo(() => {
@@ -386,15 +393,17 @@ export default function PublicHomeScreen() {
           </TouchableOpacity>
         </View>
         <View style={styles.heroButtons}>
-          <Button
-            mode="contained"
-            onPress={handleGetStarted}
-            style={styles.primaryButton}
-            labelStyle={styles.buttonLabel}
-            icon="arrow-right"
-          >
-            {t("home.getStarted")}
-          </Button>
+          {!isAuthenticated && (
+            <Button
+              mode="contained"
+              onPress={handleGetStarted}
+              style={styles.primaryButton}
+              labelStyle={styles.buttonLabel}
+              icon="arrow-right"
+            >
+              {t("home.getStarted")}
+            </Button>
+          )}
           <Button
             mode="outlined"
             onPress={() => router.push("/(public)/workers")}

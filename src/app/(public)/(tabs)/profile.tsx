@@ -3,7 +3,7 @@ import LanguageSelector from "@/components/Profile/LanguageSelector";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Alert,
@@ -21,20 +21,18 @@ import {
 } from "react-native";
 import { Button, Card, Chip, Divider } from "react-native-paper";
 import i18n from "../../../i18n";
+import { selectApiAuthUser } from "../../store/auth/authSelector";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import {
-  selectCustomerProfile,
-  selectIsCustomer,
-  selectIsLoading,
-  selectIsWorker,
-  selectUser,
-  selectUserAvatar,
-  selectUserEmail,
-  selectUserName,
-  selectUserPhone,
-  selectUserRole,
-  selectWorkerProfile,
-} from "../../store/users/userSelectors";
+  selectCurrentUser,
+  selectCurrentWorkerProfile,
+  selectProfileLoading,
+} from "../../store/profile/profileSelector";
+import {
+  fetchCurrentProfile,
+  logoutCurrentUser,
+} from "../../store/profile/profileThunk";
+import { selectCustomerProfile } from "../../store/users/userSelectors";
 import {
   logout,
   updateCustomerProfile,
@@ -47,17 +45,59 @@ export default function ProfileScreen() {
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
 
-  const user = useAppSelector(selectUser);
-  const workerProfile = useAppSelector(selectWorkerProfile);
+  const apiProfile = useAppSelector(selectCurrentWorkerProfile);
+  const user =
+    useAppSelector(selectCurrentUser) ?? useAppSelector(selectApiAuthUser);
+  const isWorker = user?.role.toUpperCase() === "WORKER";
+  const isCustomer = user?.role.toUpperCase() === "CUSTOMER";
+  const workerCategories = apiProfile?.categories ?? [];
+  const workerProfile = apiProfile
+    ? {
+        id: user?.id ?? "",
+        profession:
+          workerCategories.map((category) => category.nameEn).join(", ") ||
+          "Worker",
+        category: workerCategories[0]?.slug ?? "",
+        rating: Number(apiProfile.average_rating ?? 0),
+        totalJobs: apiProfile.bookingRequests?.length ?? 0,
+        verified: apiProfile.approval_status === "APPROVED",
+        location:
+          apiProfile.district || apiProfile.city || apiProfile.venue
+            ? {
+                district: apiProfile.district ?? "",
+                city: apiProfile.city ?? "",
+                address: apiProfile.venue ?? undefined,
+              }
+            : undefined,
+        services: workerCategories.map((category) => ({
+          id: category.id,
+          name: category.nameEn,
+          description: undefined,
+          price: undefined,
+          duration: undefined,
+        })),
+        experience: apiProfile.experience_years ?? 0,
+        hourlyRate: undefined as number | undefined,
+        availability: apiProfile.availability_status
+          ? {
+              status: apiProfile.availability_status.toLowerCase() as
+                | "available"
+                | "busy"
+                | "unavailable",
+              schedule: [],
+            }
+          : undefined,
+        description: apiProfile.bio ?? undefined,
+        skills: workerCategories.map((category) => category.nameEn),
+      }
+    : null;
   const customerProfile = useAppSelector(selectCustomerProfile);
-  const isLoading = useAppSelector(selectIsLoading);
-  const isWorker = useAppSelector(selectIsWorker);
-  const isCustomer = useAppSelector(selectIsCustomer);
-  const avatar = useAppSelector(selectUserAvatar);
-  const userName = useAppSelector(selectUserName);
-  const userEmail = useAppSelector(selectUserEmail);
-  const userPhone = useAppSelector(selectUserPhone);
-  const userRole = useAppSelector(selectUserRole);
+  const isLoading = useAppSelector(selectProfileLoading);
+  const avatar = user?.avatarPath ?? undefined;
+  const userName = user?.name ?? "User";
+  const userEmail = user?.email ?? "";
+  const userPhone = user?.phone;
+  const userRole = user?.role ?? null;
 
   const [refreshing, setRefreshing] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -71,11 +111,19 @@ export default function ProfileScreen() {
     hourlyRate: workerProfile?.hourlyRate?.toString() || "",
   });
 
+  useEffect(() => {
+    dispatch(fetchCurrentProfile());
+  }, [dispatch]);
+
   const onRefresh = async () => {
     setRefreshing(true);
-    // In a real app, you would refetch user data here
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setRefreshing(false);
+    try {
+      await dispatch(fetchCurrentProfile()).unwrap();
+    } catch {
+      // Keep the last loaded profile visible if refresh fails.
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleLogout = () => {
@@ -91,8 +139,18 @@ export default function ProfileScreen() {
           text: t("profile.logout"),
           style: "destructive",
           onPress: async () => {
-            await dispatch(logout());
-            router.replace("/(auth)/login");
+            try {
+              await dispatch(logoutCurrentUser()).unwrap();
+              await dispatch(logout()).unwrap();
+              router.replace("/(public)/(tabs)/home");
+            } catch (error) {
+              Alert.alert(
+                t("profile.error"),
+                typeof error === "string"
+                  ? error
+                  : "Unable to sign out. Please try again.",
+              );
+            }
           },
         },
       ],
@@ -481,6 +539,85 @@ export default function ProfileScreen() {
             <Text style={styles.descriptionText}>
               {workerProfile.description}
             </Text>
+          </Card.Content>
+        </Card>
+      )}
+
+      {!!apiProfile?.experiences?.length && (
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.infoHeader}>
+              <Ionicons name="briefcase-outline" size={24} color="#FF6B35" />
+              <Text style={styles.infoTitle}>Work Experience</Text>
+            </View>
+            {apiProfile.experiences.map((experience) => (
+              <View key={experience.id} style={styles.serviceItem}>
+                <Text style={styles.serviceName}>
+                  {experience.jobTitle} · {experience.companyName}
+                </Text>
+                <Text style={styles.serviceDescription}>
+                  {experience.startDate.slice(0, 10)} -{" "}
+                  {experience.isCurrent
+                    ? "Present"
+                    : (experience.endDate?.slice(0, 10) ?? "")}
+                </Text>
+                {!!experience.description && (
+                  <Text style={styles.serviceDescription}>
+                    {experience.description}
+                  </Text>
+                )}
+                <Divider style={styles.serviceDivider} />
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
+
+      {!!apiProfile?.education?.length && (
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.infoHeader}>
+              <Ionicons name="school-outline" size={24} color="#FF6B35" />
+              <Text style={styles.infoTitle}>Education</Text>
+            </View>
+            {apiProfile.education.map((education) => (
+              <View key={education.id} style={styles.serviceItem}>
+                <Text style={styles.serviceName}>
+                  {education.qualification}
+                </Text>
+                <Text style={styles.serviceDescription}>
+                  {education.institution}
+                </Text>
+                {!!education.description && (
+                  <Text style={styles.serviceDescription}>
+                    {education.description}
+                  </Text>
+                )}
+                <Divider style={styles.serviceDivider} />
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
+
+      {!!apiProfile?.portfolio?.length && (
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.infoHeader}>
+              <Ionicons name="images-outline" size={24} color="#FF6B35" />
+              <Text style={styles.infoTitle}>Portfolio</Text>
+            </View>
+            {apiProfile.portfolio.map((item) => (
+              <View key={item.id} style={styles.serviceItem}>
+                <Text style={styles.serviceName}>{item.title}</Text>
+                {!!item.description && (
+                  <Text style={styles.serviceDescription}>
+                    {item.description}
+                  </Text>
+                )}
+                <Divider style={styles.serviceDivider} />
+              </View>
+            ))}
           </Card.Content>
         </Card>
       )}

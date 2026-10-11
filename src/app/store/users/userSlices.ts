@@ -1,5 +1,6 @@
 // store/users/usersSlice.ts
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { removeStoredAuthToken } from "../auth/authServices";
 import {
   AuthState,
   CustomerProfile,
@@ -247,8 +248,7 @@ export const register = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk("auth/logout", async () => {
-  // Mock logout - clear any stored tokens
-  localStorage.removeItem("authToken");
+  await removeStoredAuthToken();
   return null;
 });
 

@@ -1,4 +1,5 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { logoutCurrentUser } from "../profile/profileThunk";
 import { AuthUser } from "./authServices";
 import { loginUser, registerUser } from "./authThunk";
 
@@ -60,7 +61,8 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.error = action.payload ?? action.error.message ?? "Login failed";
-      });
+      })
+      .addCase(logoutCurrentUser.fulfilled, () => initialState);
   },
 });
 
