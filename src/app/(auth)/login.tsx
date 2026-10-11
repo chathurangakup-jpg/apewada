@@ -13,38 +13,49 @@ import {
   View,
 } from "react-native";
 
-import { supabase } from "../../supabase";
+import {
+  selectApiAuthError,
+  selectApiAuthLoading,
+} from "../store/auth/authSelector";
+import { clearAuthError } from "../store/auth/authSlice";
+import { loginUser } from "../store/auth/authThunk";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
+  const dispatch = useAppDispatch();
+  const loading = useAppSelector(selectApiAuthLoading);
+  const authError = useAppSelector(selectApiAuthError);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert("Error", "Please enter email and password");
-      return;
-    }
+    const nextEmailError = EMAIL_PATTERN.test(email.trim())
+      ? ""
+      : "Enter a valid email address";
+    const nextPasswordError = password ? "" : "Enter your password";
+    setEmailError(nextEmailError);
+    setPasswordError(nextPasswordError);
+    if (nextEmailError || nextPasswordError) return;
 
+    dispatch(clearAuthError());
     try {
-      setLoading(true);
-
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
-
-      if (error) {
-        Alert.alert("Login failed", error.message);
-        return;
-      }
-
+      await dispatch(
+        loginUser({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      ).unwrap();
       router.replace("/(public)/(tabs)/home/home");
     } catch (error) {
-      Alert.alert("Error", "Something went wrong");
-    } finally {
-      setLoading(false);
+      Alert.alert(
+        "Login failed",
+        typeof error === "string" ? error : "Something went wrong",
+      );
     }
   };
 
@@ -74,15 +85,25 @@ export default function LoginScreen() {
               placeholder="Enter your email"
               placeholderTextColor="#999"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(value) => {
+                setEmail(value);
+                setEmailError("");
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
             />
           </View>
+          {!!emailError && <Text style={styles.errorText}>{emailError}</Text>}
 
           <Text style={styles.label}>Password</Text>
 
-          <View style={styles.inputContainer}>
+          <View
+            style={[
+              styles.inputContainer,
+              passwordError && styles.inputContainerError,
+            ]}
+          >
             <Ionicons name="lock-closed-outline" size={20} color="#777" />
 
             <TextInput
@@ -90,7 +111,10 @@ export default function LoginScreen() {
               placeholder="Enter your password"
               placeholderTextColor="#999"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(value) => {
+                setPassword(value);
+                setPasswordError("");
+              }}
               secureTextEntry={!showPassword}
             />
 
@@ -102,6 +126,11 @@ export default function LoginScreen() {
               />
             </TouchableOpacity>
           </View>
+          {!!passwordError && (
+            <Text style={styles.errorText}>{passwordError}</Text>
+          )}
+
+          {!!authError && <Text style={styles.errorText}>{authError}</Text>}
 
           <TouchableOpacity
             style={[styles.loginButton, loading && styles.disabledButton]}
@@ -191,11 +220,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
   },
 
+  inputContainerError: {
+    borderColor: "#DC2626",
+  },
+
   input: {
     flex: 1,
     marginLeft: 10,
     fontSize: 15,
     color: "#222",
+  },
+
+  errorText: {
+    color: "#B91C1C",
+    fontSize: 12,
+    marginTop: 5,
   },
 
   loginButton: {

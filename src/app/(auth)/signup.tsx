@@ -1,24 +1,40 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, RadioButton, TextInput } from "react-native-paper";
+import { Button, HelperText, TextInput } from "react-native-paper";
 
-import { supabase } from "../../supabase";
-import { UserRole } from "../../types";
+import i18n from "../../i18n";
+import {
+  selectApiAuthError,
+  selectApiAuthLoading,
+} from "../store/auth/authSelector";
+import { AccountRole } from "../store/auth/authServices";
+import { clearAuthError } from "../store/auth/authSlice";
+import { registerUser } from "../store/auth/authThunk";
+import { useAppDispatch, useAppSelector } from "../store/hooks";
 
 const PRIMARY_COLOR = "#F97316";
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^\+?[0-9\s()-]{7,18}$/;
+
+type FormField = "name" | "email" | "phone" | "password" | "confirmPassword";
 
 export default function SignupScreen() {
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const loading = useAppSelector(selectApiAuthLoading);
+  const authError = useAppSelector(selectApiAuthError);
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -26,81 +42,67 @@ export default function SignupScreen() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [role, setRole] = useState<UserRole>(UserRole.CUSTOMER);
-
-  const [loading, setLoading] = useState(false);
+  const [role, setRole] = useState<AccountRole>("CUSTOMER");
+  const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<
+    Partial<Record<FormField, string>>
+  >({});
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  const updateField = (field: FormField, value: string) => {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }));
+    if (field === "name") setName(value);
+    if (field === "email") setEmail(value);
+    if (field === "phone") setPhone(value);
+    if (field === "password") setPassword(value);
+    if (field === "confirmPassword") setConfirmPassword(value);
+  };
+
   const handleSignup = async () => {
-    // Validation
+    const nextErrors: Partial<Record<FormField, string>> = {};
+    const phoneDigits = phone.replace(/\D/g, "").length;
+    if (name.trim().length < 2) nextErrors.name = "Enter your full name";
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      nextErrors.email = "Enter a valid email address";
+    }
     if (
-      !name.trim() ||
-      !email.trim() ||
-      !phone.trim() ||
-      !password ||
-      !confirmPassword
+      !PHONE_PATTERN.test(phone.trim()) ||
+      phoneDigits < 7 ||
+      phoneDigits > 15
     ) {
-      Alert.alert("Error", "Please fill in all fields");
-      return;
+      nextErrors.phone = "Enter a valid phone number";
     }
-
-    if (password !== confirmPassword) {
-      Alert.alert("Error", "Passwords do not match");
-      return;
+    if (password.length < 8) {
+      nextErrors.password = "Use at least 8 characters";
     }
-
-    if (password.length < 6) {
-      Alert.alert("Error", "Password must be at least 6 characters");
-      return;
+    if (confirmPassword !== password) {
+      nextErrors.confirmPassword = "Passwords do not match";
     }
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
 
-    setLoading(true);
-
+    dispatch(clearAuthError());
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.trim().toLowerCase(),
-        password,
-        options: {
-          data: {
-            name: name.trim(),
-            phone: phone.trim(),
-            role,
-          },
-        },
-      });
+      const preferredLanguage = i18n.resolvedLanguage?.startsWith("si")
+        ? "SI"
+        : "EN";
+      const result = await dispatch(
+        registerUser({
+          name: name.trim(),
+          email: email.trim().toLowerCase(),
+          phone: phone.trim(),
+          password,
+          role,
+          preferredLanguage,
+        }),
+      ).unwrap();
 
-      if (error) {
-        Alert.alert("Signup Failed", error.message);
-        return;
-      }
-
-      // If email confirmation is enabled in Supabase
-      if (data.user && !data.session) {
-        Alert.alert(
-          "Account Created",
-          "Your account has been created. Please check your email and verify your account before signing in.",
-          [
-            {
-              text: "OK",
-              onPress: () => router.replace("/(auth)/login"),
-            },
-          ],
-        );
-
-        return;
-      }
-
-      // If email confirmation is disabled
-      if (data.session) {
-        Alert.alert("Success", "Your account has been created successfully.");
-
-        router.replace("/(public)/home");
-      }
+      Alert.alert("Account Created", result.message || "You can now sign in.", [
+        { text: "Sign In", onPress: () => router.replace("/(auth)/login") },
+      ]);
     } catch (error: any) {
-      Alert.alert("Signup Failed", error?.message || "Something went wrong");
-    } finally {
-      setLoading(false);
+      Alert.alert("Signup Failed", error || "Something went wrong");
     }
   };
 
@@ -122,20 +124,25 @@ export default function SignupScreen() {
           <TextInput
             label="Full Name"
             value={name}
-            onChangeText={setName}
+            onChangeText={(value) => updateField("name", value)}
             mode="outlined"
+            error={!!fieldErrors.name}
             style={styles.input}
             activeOutlineColor={PRIMARY_COLOR}
             outlineColor="#D6D6D6"
             left={<TextInput.Icon icon="account" />}
           />
+          <HelperText type="error" visible={!!fieldErrors.name}>
+            {fieldErrors.name}
+          </HelperText>
 
           {/* Email */}
           <TextInput
             label="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(value) => updateField("email", value)}
             mode="outlined"
+            error={!!fieldErrors.email}
             keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
@@ -144,26 +151,34 @@ export default function SignupScreen() {
             outlineColor="#D6D6D6"
             left={<TextInput.Icon icon="email" />}
           />
+          <HelperText type="error" visible={!!fieldErrors.email}>
+            {fieldErrors.email}
+          </HelperText>
 
           {/* Phone */}
           <TextInput
             label="Phone Number"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(value) => updateField("phone", value)}
             mode="outlined"
+            error={!!fieldErrors.phone}
             keyboardType="phone-pad"
             style={styles.input}
             activeOutlineColor={PRIMARY_COLOR}
             outlineColor="#D6D6D6"
             left={<TextInput.Icon icon="phone" />}
           />
+          <HelperText type="error" visible={!!fieldErrors.phone}>
+            {fieldErrors.phone}
+          </HelperText>
 
           {/* Password */}
           <TextInput
             label="Password"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(value) => updateField("password", value)}
             mode="outlined"
+            error={!!fieldErrors.password}
             secureTextEntry={!showPassword}
             style={styles.input}
             activeOutlineColor={PRIMARY_COLOR}
@@ -176,13 +191,17 @@ export default function SignupScreen() {
               />
             }
           />
+          <HelperText type="error" visible={!!fieldErrors.password}>
+            {fieldErrors.password}
+          </HelperText>
 
           {/* Confirm Password */}
           <TextInput
             label="Confirm Password"
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(value) => updateField("confirmPassword", value)}
             mode="outlined"
+            error={!!fieldErrors.confirmPassword}
             secureTextEntry={!showConfirmPassword}
             style={styles.input}
             activeOutlineColor={PRIMARY_COLOR}
@@ -195,26 +214,56 @@ export default function SignupScreen() {
               />
             }
           />
+          <HelperText type="error" visible={!!fieldErrors.confirmPassword}>
+            {fieldErrors.confirmPassword}
+          </HelperText>
 
           {/* Role */}
           <View style={styles.roleContainer}>
-            <Text style={styles.roleLabel}>I want to join as:</Text>
-
-            <RadioButton.Group
-              onValueChange={(value) => setRole(value as UserRole)}
-              value={role}
+            <Text style={styles.roleLabel}>I want to join as</Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ expanded: isRoleDropdownOpen }}
+              style={styles.roleDropdown}
+              onPress={() => setIsRoleDropdownOpen((open) => !open)}
             >
-              <View style={styles.radioOption}>
-                <RadioButton value={UserRole.CUSTOMER} color={PRIMARY_COLOR} />
-                <Text style={styles.radioLabel}>Customer</Text>
+              <Text style={styles.roleDropdownText}>
+                {role === "CUSTOMER" ? "Customer" : "Worker"}
+              </Text>
+              <Ionicons
+                name={isRoleDropdownOpen ? "chevron-up" : "chevron-down"}
+                size={18}
+                color="#777777"
+              />
+            </Pressable>
+            {isRoleDropdownOpen && (
+              <View style={styles.roleOptions}>
+                {(["CUSTOMER", "WORKER"] as AccountRole[]).map((option) => (
+                  <Pressable
+                    key={option}
+                    style={styles.roleOption}
+                    onPress={() => {
+                      setRole(option);
+                      setIsRoleDropdownOpen(false);
+                    }}
+                  >
+                    <Text style={styles.roleOptionText}>
+                      {option === "CUSTOMER" ? "Customer" : "Worker"}
+                    </Text>
+                    {role === option && (
+                      <Ionicons
+                        name="checkmark"
+                        size={18}
+                        color={PRIMARY_COLOR}
+                      />
+                    )}
+                  </Pressable>
+                ))}
               </View>
-
-              <View style={styles.radioOption}>
-                <RadioButton value={UserRole.WORKER} color={PRIMARY_COLOR} />
-                <Text style={styles.radioLabel}>Worker</Text>
-              </View>
-            </RadioButton.Group>
+            )}
           </View>
+
+          {!!authError && <Text style={styles.serverError}>{authError}</Text>}
 
           {/* Signup */}
           <Button
@@ -291,16 +340,51 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
-  radioOption: {
+  roleDropdown: {
+    minHeight: 52,
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 3,
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#D6D6D6",
+    borderRadius: 10,
+    backgroundColor: "#FFFFFF",
   },
 
-  radioLabel: {
-    fontSize: 16,
+  roleDropdownText: {
     color: "#333333",
-    marginLeft: 4,
+    fontSize: 15,
+  },
+
+  roleOptions: {
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "#E5E5E5",
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#FFFFFF",
+  },
+
+  roleOption: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F1F1",
+  },
+
+  roleOptionText: {
+    color: "#333333",
+    fontSize: 15,
+  },
+
+  serverError: {
+    color: "#B91C1C",
+    fontSize: 13,
+    marginBottom: 12,
   },
 
   signupButton: {
