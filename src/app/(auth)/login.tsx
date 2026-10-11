@@ -1,21 +1,21 @@
-import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import { Link, router } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-import { Button, TextInput } from "react-native-paper";
-// import { useAuth } from "../../hooks/useAuth";
+
+import { supabase } from "../../supabase";
 
 export default function LoginScreen() {
-  const router = useRouter();
-  // const { login } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -23,16 +23,26 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      Alert.alert("Error", "Please enter email and password");
       return;
     }
 
-    setLoading(true);
     try {
-      // await login({ email, password });
-      // Navigation will be handled by the index screen
+      setLoading(true);
+
+      const { error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        Alert.alert("Login failed", error.message);
+        return;
+      }
+
+      router.replace("/(public)/(tabs)/home/home");
     } catch (error) {
-      Alert.alert("Login Failed", "Invalid email or password");
+      Alert.alert("Error", "Something went wrong");
     } finally {
       setLoading(false);
     }
@@ -41,65 +51,81 @@ export default function LoginScreen() {
   return (
     <KeyboardAvoidingView
       style={styles.container}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Welcome Back!</Text>
-          <Text style={styles.subtitle}>Sign in to continue</Text>
+      <View style={styles.content}>
+        <View style={styles.logoContainer}>
+          <View style={styles.logo}>
+            <Ionicons name="hammer" size={32} color="#fff" />
+          </View>
+
+          <Text style={styles.title}>Welcome Back</Text>
+          <Text style={styles.subtitle}>Login to continue</Text>
         </View>
 
         <View style={styles.form}>
-          <TextInput
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            mode="outlined"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            style={styles.input}
-            left={<TextInput.Icon icon="email" />}
-          />
+          <Text style={styles.label}>Email</Text>
 
-          <TextInput
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            mode="outlined"
-            secureTextEntry={!showPassword}
-            style={styles.input}
-            left={<TextInput.Icon icon="lock" />}
-            right={
-              <TextInput.Icon
-                icon={showPassword ? "eye-off" : "eye"}
-                onPress={() => setShowPassword(!showPassword)}
+          <View style={styles.inputContainer}>
+            <Ionicons name="mail-outline" size={20} color="#777" />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your email"
+              placeholderTextColor="#999"
+              value={email}
+              onChangeText={setEmail}
+              keyboardType="email-address"
+              autoCapitalize="none"
+            />
+          </View>
+
+          <Text style={styles.label}>Password</Text>
+
+          <View style={styles.inputContainer}>
+            <Ionicons name="lock-closed-outline" size={20} color="#777" />
+
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry={!showPassword}
+            />
+
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <Ionicons
+                name={showPassword ? "eye-outline" : "eye-off-outline"}
+                size={20}
+                color="#777"
               />
-            }
-          />
-
-          <TouchableOpacity style={styles.forgotPassword}>
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-          </TouchableOpacity>
-
-          <Button
-            mode="contained"
-            onPress={handleLogin}
-            loading={loading}
-            disabled={loading}
-            style={styles.loginButton}
-            labelStyle={styles.buttonLabel}
-          >
-            Sign In
-          </Button>
-
-          <View style={styles.signupContainer}>
-            <Text style={styles.signupText}>Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.push("/(auth)/signup")}>
-              <Text style={styles.signupLink}>Sign Up</Text>
             </TouchableOpacity>
           </View>
+
+          <TouchableOpacity
+            style={[styles.loginButton, loading && styles.disabledButton]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loginButtonText}>Login</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.signupContainer}>
+            <Text style={styles.signupText}>Don't have an account?</Text>
+
+            <Link href="/(auth)/signup" asChild>
+              <TouchableOpacity>
+                <Text style={styles.signupLink}>Sign Up</Text>
+              </TouchableOpacity>
+            </Link>
+          </View>
         </View>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -109,60 +135,103 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#fff",
   },
-  scrollContent: {
-    flexGrow: 1,
-    padding: 20,
+
+  content: {
+    flex: 1,
     justifyContent: "center",
+    paddingHorizontal: 24,
   },
-  header: {
+
+  logoContainer: {
+    alignItems: "center",
     marginBottom: 40,
   },
+
+  logo: {
+    width: 70,
+    height: 70,
+    borderRadius: 20,
+    backgroundColor: "#F97316",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+  },
+
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#1a1a1a",
-    marginBottom: 8,
+    fontSize: 28,
+    fontWeight: "700",
+    color: "#222",
   },
+
   subtitle: {
-    fontSize: 16,
-    color: "#666",
+    marginTop: 8,
+    fontSize: 15,
+    color: "#777",
   },
+
   form: {
     width: "100%",
   },
-  input: {
-    marginBottom: 16,
-    backgroundColor: "#fff",
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: "#007AFF",
+
+  label: {
     fontSize: 14,
-  },
-  loginButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  buttonLabel: {
-    fontSize: 16,
     fontWeight: "600",
+    color: "#333",
+    marginBottom: 8,
+    marginTop: 16,
   },
+
+  inputContainer: {
+    height: 52,
+    borderWidth: 1,
+    borderColor: "#ddd",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 15,
+  },
+
+  input: {
+    flex: 1,
+    marginLeft: 10,
+    fontSize: 15,
+    color: "#222",
+  },
+
+  loginButton: {
+    height: 52,
+    borderRadius: 12,
+    backgroundColor: "#F97316",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 28,
+  },
+
+  disabledButton: {
+    opacity: 0.6,
+  },
+
+  loginButtonText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
   signupContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginTop: 24,
+    marginTop: 25,
   },
+
   signupText: {
-    color: "#666",
+    color: "#777",
     fontSize: 14,
   },
+
   signupLink: {
-    color: "#007AFF",
+    color: "#F97316",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+    marginLeft: 5,
   },
 });
