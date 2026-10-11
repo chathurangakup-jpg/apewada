@@ -1,10 +1,9 @@
 // app/(public)/home.tsx
 import JobCard from "@/components/Jobs/JobCard";
-import { CATEGORIES } from "@/constants/mockData";
 import { colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -21,8 +20,10 @@ import {
   View,
 } from "react-native";
 import { Button, Chip } from "react-native-paper";
-import { useGetJobsQuery } from "../../../store/jobs/jobApi";
-import { useGetWorkersQuery } from "../../../store/workers/workerApi";
+import { selectHomeState } from "../../../store/home/homeSelector";
+import { HomeCategory, HomeWorker } from "../../../store/home/homeServices";
+import { fetchHomeData } from "../../../store/home/homeThunk";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 
 const { width } = Dimensions.get("window");
 
@@ -69,60 +70,79 @@ const SRI_LANKA_DISTRICTS = [
 
 export default function PublicHomeScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const dispatch = useAppDispatch();
+  const { categories, topRatedWorkers, recentJobs, isLoading, error } =
+    useAppSelector(selectHomeState);
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [isDistrictDropdownOpen, setIsDistrictDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
-  // ==========================================================
-  // REDUX QUERIES
-  // ==========================================================
+  useEffect(() => {
+    dispatch(fetchHomeData());
+  }, [dispatch]);
 
-  // Use the main workers query so district + category are sent to
-  // the API together. This also works with the current mock API.
-  const {
-    data: workersData,
-    isLoading: isLoadingWorkers,
-    error: workersError,
-    refetch: refetchWorkers,
-  } = useGetWorkersQuery({
-    category: selectedCategory !== "All" ? selectedCategory : undefined,
-    district:
-      selectedDistrict !== "All Districts" ? selectedDistrict : undefined,
-    search: searchQuery || undefined,
-    limit: 20,
-  });
-
-  // Use getJobs instead of getRecentJobs because getJobs already
-  // supports both category and district filtering.
-  const {
-    data: jobsData,
-    isLoading: isLoadingJobs,
-    error: jobsError,
-    refetch: refetchJobs,
-  } = useGetJobsQuery({
-    category: selectedCategory !== "All" ? selectedCategory : undefined,
-    district:
-      selectedDistrict !== "All Districts" ? selectedDistrict : undefined,
-    search: searchQuery || undefined,
-    status: "open",
-    sortBy: "createdAt",
-    sortOrder: "desc",
-    page: 1,
-    limit: 4,
-  });
-
-  // Workers are already filtered by the API. Sort them by rating
-  // for the home-page "Top Workers" section.
   const filteredWorkers = useMemo(() => {
-    return [...(workersData?.workers ?? [])]
-      .sort((a, b) => b.rating - a.rating)
-      .slice(0, 5);
-  }, [workersData?.workers]);
+    return [...topRatedWorkers]
+      .filter((worker: HomeWorker) => {
+        const workerCategory =
+          typeof worker.category === "string"
+            ? worker.category
+            : (worker.category?.slug ?? worker.category?.nameEn);
+        const district = worker.location?.district ?? worker.district;
+        const searchText = [
+          worker.user?.name,
+          worker.profession,
+          workerCategory,
+          district,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
 
-  const filteredJobs = jobsData?.jobs ?? [];
+        return (
+          (selectedCategory === "All" ||
+            workerCategory?.toLowerCase() === selectedCategory) &&
+          (selectedDistrict === "All Districts" ||
+            district === selectedDistrict) &&
+          (!searchQuery || searchText.includes(searchQuery.toLowerCase()))
+        );
+      })
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+      .slice(0, 5);
+  }, [topRatedWorkers, selectedCategory, selectedDistrict, searchQuery]);
+
+  const filteredJobs = useMemo(
+    () =>
+      recentJobs.filter((job) => {
+        const jobCategory =
+          typeof job.category === "string"
+            ? job.category
+            : (job.category?.slug ?? job.category?.nameEn);
+        const district = job.location?.district ?? job.district;
+        const searchText = [
+          job.title,
+          job.name,
+          job.description,
+          jobCategory,
+          district,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return (
+          (selectedCategory === "All" ||
+            jobCategory?.toLowerCase() === selectedCategory) &&
+          (selectedDistrict === "All Districts" ||
+            district === selectedDistrict) &&
+          (!searchQuery || searchText.includes(searchQuery.toLowerCase()))
+        );
+      }),
+    [recentJobs, selectedCategory, selectedDistrict, searchQuery],
+  );
 
   // ==========================================================
   // REFRESH HANDLER
@@ -132,7 +152,7 @@ export default function PublicHomeScreen() {
     setRefreshing(true);
 
     try {
-      await Promise.all([refetchWorkers(), refetchJobs()]);
+      await dispatch(fetchHomeData());
     } finally {
       setRefreshing(false);
     }
@@ -219,7 +239,7 @@ export default function PublicHomeScreen() {
     </Modal>
   );
 
-  const renderWorkerCard = (worker: any) => (
+  const renderWorkerCard = (worker: HomeWorker) => (
     <TouchableOpacity
       key={worker.id}
       style={styles.workerCard}
@@ -254,15 +274,6 @@ export default function PublicHomeScreen() {
       </View>
     </TouchableOpacity>
   );
-
-  const renderJobCard = ({ item }: { item: any }) => {
-    return (
-      <JobCard
-        job={item}
-        onPress={() => router.push(`/(public)/home/jobs/jobs`)}
-      />
-    );
-  };
 
   // const renderJobCard = (job: any) => (
   //   <TouchableOpacity
@@ -302,9 +313,6 @@ export default function PublicHomeScreen() {
   // RENDER
   // ==========================================================
 
-  const isLoading = isLoadingWorkers || isLoadingJobs;
-  const hasError = workersError || jobsError;
-
   if (isLoading && !refreshing) {
     return (
       <View style={styles.loadingContainer}>
@@ -339,6 +347,8 @@ export default function PublicHomeScreen() {
           /> */}
         </View>
       </View>
+
+      {error && <Text style={styles.emptyStateText}>{error}</Text>}
 
       {/* ======================================================
           HERO
@@ -418,15 +428,15 @@ export default function PublicHomeScreen() {
           showsHorizontalScrollIndicator={false}
           style={styles.categoriesScroll}
         >
-          {CATEGORIES.map((category) => (
+          {categories.map((category: HomeCategory) => (
             <TouchableOpacity
               key={category.id}
               style={[
                 styles.categoryCard,
-                selectedCategory === category.name.toLowerCase() &&
+                selectedCategory === category.slug &&
                   styles.categoryCardSelected,
               ]}
-              onPress={() => handleCategorySelect(category.name.toLowerCase())}
+              onPress={() => handleCategorySelect(category.slug)}
             >
               <View style={styles.categoryIcon}>
                 <Ionicons
@@ -435,7 +445,11 @@ export default function PublicHomeScreen() {
                   color="#FF6B35"
                 />
               </View>
-              <Text style={styles.categoryName}>{category.name}</Text>
+              <Text style={styles.categoryName}>
+                {i18n.resolvedLanguage?.startsWith("si")
+                  ? category.nameSi
+                  : category.nameEn}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>

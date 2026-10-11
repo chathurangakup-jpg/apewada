@@ -1,12 +1,14 @@
 // store/store.ts
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
+import homeReducer from "./home/homeSlice";
 import { jobApi } from "./jobs/jobApi";
 import authReducer from "./users/userSlices";
 import { workerApi } from "./workers/workerApi";
 
 export const store = configureStore({
   reducer: {
+    home: homeReducer,
     auth: authReducer,
     [workerApi.reducerPath]: workerApi.reducer,
     [jobApi.reducerPath]: jobApi.reducer,
