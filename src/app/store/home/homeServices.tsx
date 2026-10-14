@@ -8,19 +8,22 @@ export interface HomeCategory {
 
 export interface HomeWorker {
   id: string;
-  user?: {
-    name?: string;
-    avatar?: string;
-  };
-  profession?: string;
-  category?: string | { slug?: string; nameEn?: string };
-  rating?: number;
-  totalJobs?: number;
-  verified?: boolean;
-  location?: { district?: string };
-  district?: string;
+  name: string;
+  avatarPath: string | null;
+  bio: string | null;
+  experienceYears: number;
+  district: string;
+  city: string;
+  averageRating: string;
+  reviewCount: number;
+  categories: {
+    id: string;
+    nameEn: string;
+    nameSi: string;
+    slug: string;
+    icon: string;
+  }[];
 }
-
 export interface HomeJob {
   id: string;
   title?: string;
@@ -52,6 +55,7 @@ export async function getHomeData(): Promise<HomeData> {
     headers: { "Content-Type": "application/json" },
   });
   const result = (await response.json()) as HomeDataResponse;
+  console.log("Home data response:", JSON.stringify(result));
 
   if (!response.ok || !result.success) {
     throw new Error(result.message || "Unable to load home data");

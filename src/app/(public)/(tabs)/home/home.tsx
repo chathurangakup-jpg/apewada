@@ -95,16 +95,11 @@ export default function PublicHomeScreen() {
     return [...topRatedWorkers]
       .filter((worker: HomeWorker) => {
         const workerCategory =
-          typeof worker.category === "string"
-            ? worker.category
-            : (worker.category?.slug ?? worker.category?.nameEn);
-        const district = worker.location?.district ?? worker.district;
-        const searchText = [
-          worker.user?.name,
-          worker.profession,
-          workerCategory,
-          district,
-        ]
+          typeof worker.categories === "string"
+            ? worker.categories
+            : (worker.categories?.[0]?.slug ?? worker.categories?.[0]?.nameEn);
+        const district = worker.district ?? worker.district;
+        const searchText = [worker.name, worker.bio, workerCategory, district]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
@@ -121,39 +116,79 @@ export default function PublicHomeScreen() {
       .slice(0, 5);
   }, [topRatedWorkers, selectedCategory, selectedDistrict, searchQuery]);
 
+  // const filteredJobs = useMemo(
+  //   () =>
+  //     recentJobs.filter((job) => {
+  //       const jobCategory =
+  //         typeof job.category === "string"
+  //           ? job.category
+  //           : (job.category?.slug ?? job.category?.nameEn);
+  //       const district = job.location?.district ?? job.district;
+  //       const searchText = [
+  //         job.title,
+  //         job.name,
+  //         job.description,
+  //         jobCategory,
+  //         district,
+  //       ]
+  //         .filter(Boolean)
+  //         .join(" ")
+  //         .toLowerCase();
+
+  //       return (
+  //         (selectedCategory === "All" ||
+  //           jobCategory?.toLowerCase() === selectedCategory) &&
+  //         (selectedDistrict === "All Districts" ||
+  //           district === selectedDistrict) &&
+  //         (!searchQuery || searchText.includes(searchQuery.toLowerCase()))
+  //       );
+  //     }),
+  //   [recentJobs, selectedCategory, selectedDistrict, searchQuery],
+  // );
+
+  // ==========================================================
+  // REFRESH HANDLER
+  // ==========================================================
+
   const filteredJobs = useMemo(
     () =>
-      recentJobs.filter((job) => {
-        const jobCategory =
-          typeof job.category === "string"
+      recentJobs.filter((job: any) => {
+        // API returns flat fields: categorySlug, categoryNameEn, district, city
+        const jobCategorySlug =
+          job.categorySlug ??
+          (typeof job.category === "string"
             ? job.category
-            : (job.category?.slug ?? job.category?.nameEn);
-        const district = job.location?.district ?? job.district;
+            : (job.category?.slug ?? job.category?.nameEn));
+
+        const district = job.district ?? job.location?.district;
+
         const searchText = [
           job.title,
           job.name,
           job.description,
-          jobCategory,
+          job.categoryNameEn,
+          jobCategorySlug,
           district,
         ]
           .filter(Boolean)
           .join(" ")
           .toLowerCase();
 
-        return (
-          (selectedCategory === "All" ||
-            jobCategory?.toLowerCase() === selectedCategory) &&
-          (selectedDistrict === "All Districts" ||
-            district === selectedDistrict) &&
-          (!searchQuery || searchText.includes(searchQuery.toLowerCase()))
-        );
+        const matchesCategory =
+          selectedCategory === "All" ||
+          (jobCategorySlug &&
+            jobCategorySlug.toLowerCase() === selectedCategory.toLowerCase());
+
+        const matchesDistrict =
+          selectedDistrict === "All Districts" || district === selectedDistrict;
+
+        const matchesSearch =
+          !searchQuery || searchText.includes(searchQuery.toLowerCase());
+
+        return matchesCategory && matchesDistrict && matchesSearch;
       }),
     [recentJobs, selectedCategory, selectedDistrict, searchQuery],
   );
-
-  // ==========================================================
-  // REFRESH HANDLER
-  // ==========================================================
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -174,6 +209,7 @@ export default function PublicHomeScreen() {
   };
 
   const handleCategorySelect = (category: string) => {
+    console.log("Selected category:", category);
     setSelectedCategory(category);
   };
 
@@ -254,29 +290,41 @@ export default function PublicHomeScreen() {
     >
       <Image
         source={{
-          uri: worker.user?.avatar || "https://i.pravatar.cc/150",
+          uri: worker.avatarPath
+            ? worker.avatarPath
+            : "https://i.pravatar.cc/150",
         }}
         style={styles.workerAvatar}
       />
-      <Text style={styles.workerName}>{worker.user?.name}</Text>
-      <Text style={styles.workerProfession}>{worker.profession}</Text>
+
+      {/* Worker name */}
+      <Text style={styles.workerName}>{worker.name}</Text>
+
+      {/* Profession */}
+      <Text style={styles.workerProfession}>
+        {worker.categories?.map((category) => category.nameEn).join(", ") ||
+          "General Worker"}
+      </Text>
+
+      {/* Rating and reviews */}
       <View style={styles.workerRating}>
         <Ionicons name="star" size={14} color="#FFB800" />
+
         <Text style={styles.workerRatingText}>
-          {worker.rating?.toFixed(1) || "0.0"}
+          {Number(worker.averageRating || 0).toFixed(1)}
         </Text>
-        <Text style={styles.workerJobs}>({worker.totalJobs || 0} jobs)</Text>
+
+        <Text style={styles.workerJobs}>
+          ({worker.reviewCount || 0} reviews)
+        </Text>
       </View>
-      {worker.verified && (
-        <View style={styles.verifiedBadge}>
-          <Ionicons name="checkmark-circle" size={14} color="#34C759" />
-          <Text style={styles.verifiedText}>Verified</Text>
-        </View>
-      )}
+
+      {/* City and district */}
       <View style={styles.workerLocation}>
-        <Ionicons name="location" size={10} color="#6B7280" />
+        <Ionicons name="location" size={12} color="#6B7280" />
+
         <Text style={styles.workerLocationText}>
-          {worker.location?.district}
+          {[worker.city, worker.district].filter(Boolean).join(", ")}
         </Text>
       </View>
     </TouchableOpacity>
