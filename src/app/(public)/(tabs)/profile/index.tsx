@@ -1,4 +1,4 @@
-// app/(public)/profile.tsx
+// Profile screen.
 import LanguageSelector from "@/components/Profile/LanguageSelector";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -20,25 +20,54 @@ import {
   View,
 } from "react-native";
 import { Button, Card, Chip, Divider } from "react-native-paper";
-import i18n from "../../../i18n";
-import { selectApiAuthUser } from "../../store/auth/authSelector";
-import { useAppDispatch, useAppSelector } from "../../store/hooks";
+import i18n from "../../../../i18n";
+import { selectApiAuthUser } from "../../../store/auth/authSelector";
+import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import {
+  selectCurrentCustomerProfile,
   selectCurrentUser,
   selectCurrentWorkerProfile,
   selectProfileLoading,
-} from "../../store/profile/profileSelector";
+  selectProfileUpdating,
+} from "../../../store/profile/profileSelector";
+import {
+  WorkerEducationRecord,
+  WorkerExperienceRecord,
+  WorkerPortfolioRecord,
+} from "../../../store/profile/profileServices";
 import {
   fetchCurrentProfile,
   logoutCurrentUser,
-} from "../../store/profile/profileThunk";
-import { selectCustomerProfile } from "../../store/users/userSelectors";
+  updateCustomerProfile as updateApiCustomerProfile,
+  updateWorkerProfile as updateApiWorkerProfile,
+} from "../../../store/profile/profileThunk";
+import { selectCustomerProfile } from "../../../store/users/userSelectors";
 import {
   logout,
-  updateCustomerProfile,
-  updateProfile,
-  updateWorkerProfile,
-} from "../../store/users/userSlices";
+  updateCustomerProfile as updateLegacyCustomerProfile,
+} from "../../../store/users/userSlices";
+
+interface ProfileEditData {
+  address: string;
+  district: string;
+  city: string;
+  venue: string;
+  bio: string;
+  experienceYears: string;
+  educationSummary: string;
+  categoryIds: string;
+  experiences: WorkerExperienceRecord[];
+  education: WorkerEducationRecord[];
+  portfolio: WorkerPortfolioRecord[];
+}
+
+const isValidDateInput = (value: string) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value
+  );
+};
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -46,8 +75,10 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
 
   const apiProfile = useAppSelector(selectCurrentWorkerProfile);
-  const user =
-    useAppSelector(selectCurrentUser) ?? useAppSelector(selectApiAuthUser);
+  const apiCustomerProfile = useAppSelector(selectCurrentCustomerProfile);
+  const currentUser = useAppSelector(selectCurrentUser);
+  const authUser = useAppSelector(selectApiAuthUser);
+  const user = currentUser ?? authUser;
   const isWorker = user?.role.toUpperCase() === "WORKER";
   const isCustomer = user?.role.toUpperCase() === "CUSTOMER";
   const workerCategories = apiProfile?.categories ?? [];
@@ -76,7 +107,8 @@ export default function ProfileScreen() {
           price: undefined,
           duration: undefined,
         })),
-        experience: apiProfile.experience_years ?? 0,
+        experience:
+          apiProfile.experienceYears ?? apiProfile.experience_years ?? 0,
         hourlyRate: undefined as number | undefined,
         availability: apiProfile.availability_status
           ? {
@@ -93,6 +125,7 @@ export default function ProfileScreen() {
     : null;
   const customerProfile = useAppSelector(selectCustomerProfile);
   const isLoading = useAppSelector(selectProfileLoading);
+  const isUpdating = useAppSelector(selectProfileUpdating);
   const avatar = user?.avatarPath ?? undefined;
   const userName = user?.name ?? "User";
   const userEmail = user?.email ?? "";
@@ -103,12 +136,18 @@ export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [currentLang, setCurrentLang] = useState(i18n.language || "en");
-  const [editData, setEditData] = useState({
-    name: user?.name || "",
-    phone: user?.phone || "",
-    profession: workerProfile?.profession || "",
-    description: workerProfile?.description || "",
-    hourlyRate: workerProfile?.hourlyRate?.toString() || "",
+  const [editData, setEditData] = useState<ProfileEditData>({
+    address: "",
+    district: "",
+    city: "",
+    venue: "",
+    bio: "",
+    experienceYears: "",
+    educationSummary: "",
+    categoryIds: "",
+    experiences: [],
+    education: [],
+    portfolio: [],
   });
 
   useEffect(() => {
@@ -142,7 +181,7 @@ export default function ProfileScreen() {
             try {
               await dispatch(logoutCurrentUser()).unwrap();
               await dispatch(logout()).unwrap();
-              router.replace("/(public)/(tabs)/home");
+              router.replace("/(public)/(tabs)/home/home");
             } catch (error) {
               Alert.alert(
                 t("profile.error"),
@@ -171,7 +210,7 @@ export default function ProfileScreen() {
       // persist to customer profile preferences if available
       if (isCustomer && customerProfile) {
         dispatch(
-          updateCustomerProfile({
+          updateLegacyCustomerProfile({
             customerId: customerProfile.id,
             data: {
               preferences: {
@@ -190,50 +229,200 @@ export default function ProfileScreen() {
   };
 
   const handleEditProfile = () => {
-    setEditData({
-      name: user?.name || "",
-      phone: user?.phone || "",
-      profession: workerProfile?.profession || "",
-      description: workerProfile?.description || "",
-      hourlyRate: workerProfile?.hourlyRate?.toString() || "",
-    });
-    setEditModalVisible(true);
+    router.push("/(public)/(tabs)/profile/editProfile");
   };
 
   const handleSaveProfile = async () => {
     try {
-      // Update user profile
-      await dispatch(
-        updateProfile({
-          userId: user!.id,
-          data: {
-            name: editData.name,
-            phone: editData.phone,
-          },
-        }),
-      ).unwrap();
-
-      // Update worker profile if worker
-      if (isWorker && workerProfile) {
+      if (isCustomer) {
         await dispatch(
-          updateWorkerProfile({
-            workerId: workerProfile.id,
-            data: {
-              profession: editData.profession,
-              description: editData.description,
-              hourlyRate: editData.hourlyRate
-                ? parseFloat(editData.hourlyRate)
-                : undefined,
-            },
+          updateApiCustomerProfile({
+            address: editData.address.trim(),
+            district: editData.district.trim(),
+            city: editData.city.trim(),
+            venue: editData.venue.trim(),
           }),
         ).unwrap();
+      } else if (isWorker) {
+        const experienceYears = Number(editData.experienceYears);
+        if (
+          !editData.experienceYears.trim() ||
+          !Number.isInteger(experienceYears) ||
+          experienceYears < 0
+        ) {
+          Alert.alert(t("profile.error"), t("profile.invalidExperienceYears"));
+          return;
+        }
+
+        const experiences = editData.experiences
+          .filter(
+            (item) =>
+              item.companyName.trim() ||
+              item.jobTitle.trim() ||
+              item.description?.trim() ||
+              item.startDate.trim() ||
+              item.endDate?.trim(),
+          )
+          .map(({ id: _id, ...item }) => ({
+            companyName: item.companyName.trim(),
+            jobTitle: item.jobTitle.trim(),
+            description: item.description?.trim() || "",
+            startDate: item.startDate.trim(),
+            endDate: item.isCurrent ? null : item.endDate?.trim() || null,
+            isCurrent: item.isCurrent,
+          }));
+        const education = editData.education
+          .filter(
+            (item) =>
+              item.institution.trim() ||
+              item.qualification.trim() ||
+              item.description?.trim() ||
+              item.startDate?.trim() ||
+              item.endDate?.trim(),
+          )
+          .map(({ id: _id, ...item }) => ({
+            institution: item.institution.trim(),
+            qualification: item.qualification.trim(),
+            description: item.description?.trim() || "",
+            startDate: item.startDate?.trim() || undefined,
+            endDate: item.endDate?.trim() || null,
+          }));
+        const portfolio = editData.portfolio
+          .filter(
+            (item) =>
+              item.title.trim() ||
+              item.description?.trim() ||
+              item.completedAt?.trim(),
+          )
+          .map(({ id: _id, ...item }) => ({
+            title: item.title.trim(),
+            description: item.description?.trim() || "",
+            completedAt: item.completedAt?.trim() || undefined,
+          }));
+
+        if (
+          experiences.some(
+            (item) =>
+              !item.companyName ||
+              !item.jobTitle ||
+              !isValidDateInput(item.startDate) ||
+              (!item.isCurrent &&
+                (!item.endDate || !isValidDateInput(item.endDate))),
+          )
+        ) {
+          Alert.alert(t("profile.error"), t("profile.completeExperienceDates"));
+          return;
+        }
+
+        if (
+          education.some(
+            (item) =>
+              !item.institution ||
+              !item.qualification ||
+              (!!item.startDate && !isValidDateInput(item.startDate)) ||
+              (!!item.endDate && !isValidDateInput(item.endDate)),
+          ) ||
+          portfolio.some(
+            (item) =>
+              !item.title ||
+              (!!item.completedAt && !isValidDateInput(item.completedAt)),
+          )
+        ) {
+          Alert.alert(
+            t("profile.error"),
+            t("profile.completeEducationPortfolio"),
+          );
+          return;
+        }
+
+        await dispatch(
+          updateApiWorkerProfile({
+            bio: editData.bio.trim(),
+            experienceYears,
+            educationSummary: editData.educationSummary.trim(),
+            district: editData.district.trim(),
+            city: editData.city.trim(),
+            venue: editData.venue.trim(),
+            categoryIds: editData.categoryIds
+              .split(",")
+              .map((categoryId) => categoryId.trim())
+              .filter(Boolean),
+            experiences,
+            education,
+            portfolio,
+          }),
+        ).unwrap();
+      } else {
+        throw new Error("Unable to determine the profile type.");
       }
 
       setEditModalVisible(false);
       Alert.alert(t("profile.success"), t("profile.profileUpdated"));
     } catch (error) {
-      Alert.alert(t("profile.error"), t("profile.profileUpdateFailed"));
+      Alert.alert(
+        t("profile.error"),
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+            ? error.message
+            : t("profile.profileUpdateFailed"),
+      );
     }
+  };
+
+  const renderEditField = (
+    label: string,
+    value: string,
+    onChangeText: (text: string) => void,
+    options: { multiline?: boolean; keyboardType?: "default" | "numeric" } = {},
+  ) => (
+    <View style={styles.inputGroup}>
+      <Text style={styles.inputLabel}>{label}</Text>
+      <TextInput
+        style={[styles.input, options.multiline && styles.textArea]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={label}
+        multiline={options.multiline}
+        keyboardType={options.keyboardType}
+      />
+    </View>
+  );
+
+  const updateExperience = (
+    index: number,
+    changes: Partial<WorkerExperienceRecord>,
+  ) => {
+    setEditData((current) => ({
+      ...current,
+      experiences: current.experiences.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...changes } : item,
+      ),
+    }));
+  };
+
+  const updateEducation = (
+    index: number,
+    changes: Partial<WorkerEducationRecord>,
+  ) => {
+    setEditData((current) => ({
+      ...current,
+      education: current.education.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...changes } : item,
+      ),
+    }));
+  };
+
+  const updatePortfolio = (
+    index: number,
+    changes: Partial<WorkerPortfolioRecord>,
+  ) => {
+    setEditData((current) => ({
+      ...current,
+      portfolio: current.portfolio.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...changes } : item,
+      ),
+    }));
   };
 
   const renderCustomerProfile = () => (
@@ -265,18 +454,36 @@ export default function ProfileScreen() {
         </Card.Content>
       </Card>
 
-      {customerProfile?.address && (
+      {(apiCustomerProfile?.address ||
+        apiCustomerProfile?.venue ||
+        apiCustomerProfile?.city ||
+        apiCustomerProfile?.district ||
+        customerProfile?.address) && (
         <Card style={styles.infoCard}>
           <Card.Content>
             <View style={styles.infoHeader}>
               <Ionicons name="location-outline" size={24} color="#FF6B35" />
               <Text style={styles.infoTitle}>{t("profile.address")}</Text>
             </View>
+            {!!(
+              apiCustomerProfile?.address ?? customerProfile?.address?.street
+            ) && (
+              <Text style={styles.infoText}>
+                {apiCustomerProfile?.address ??
+                  customerProfile?.address?.street}
+              </Text>
+            )}
+            {!!apiCustomerProfile?.venue && (
+              <Text style={styles.infoText}>{apiCustomerProfile.venue}</Text>
+            )}
             <Text style={styles.infoText}>
-              {customerProfile.address.street}
-            </Text>
-            <Text style={styles.infoText}>
-              {customerProfile.address.city}, {customerProfile.address.district}
+              {[
+                apiCustomerProfile?.city ?? customerProfile?.address?.city,
+                apiCustomerProfile?.district ??
+                  customerProfile?.address?.district,
+              ]
+                .filter(Boolean)
+                .join(", ")}
             </Text>
           </Card.Content>
         </Card>
@@ -317,7 +524,7 @@ export default function ProfileScreen() {
               onValueChange={(value) => {
                 // Update notification preference
                 dispatch(
-                  updateCustomerProfile({
+                  updateLegacyCustomerProfile({
                     customerId: customerProfile!.id,
                     data: {
                       preferences: {
@@ -731,76 +938,325 @@ export default function ProfileScreen() {
             </View>
 
             <ScrollView style={styles.modalBody}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>{t("profile.name")}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editData.name}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, name: text })
-                  }
-                  placeholder={t("profile.name")}
-                />
-              </View>
+              {isCustomer &&
+                renderEditField(
+                  t("profile.address"),
+                  editData.address,
+                  (text) =>
+                    setEditData((current) => ({ ...current, address: text })),
+                  { multiline: true },
+                )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>{t("profile.phone")}</Text>
-                <TextInput
-                  style={styles.input}
-                  value={editData.phone}
-                  onChangeText={(text) =>
-                    setEditData({ ...editData, phone: text })
-                  }
-                  placeholder={t("profile.phone")}
-                  keyboardType="phone-pad"
-                />
-              </View>
+              {(isCustomer || isWorker) && (
+                <>
+                  {renderEditField(
+                    t("profile.district"),
+                    editData.district,
+                    (text) =>
+                      setEditData((current) => ({
+                        ...current,
+                        district: text,
+                      })),
+                  )}
+                  {renderEditField(t("profile.city"), editData.city, (text) =>
+                    setEditData((current) => ({ ...current, city: text })),
+                  )}
+                  {renderEditField(t("profile.venue"), editData.venue, (text) =>
+                    setEditData((current) => ({ ...current, venue: text })),
+                  )}
+                </>
+              )}
 
               {isWorker && (
                 <>
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>
-                      {t("profile.profession")}
+                  {renderEditField(
+                    t("profile.aboutMe"),
+                    editData.bio,
+                    (text) =>
+                      setEditData((current) => ({ ...current, bio: text })),
+                    { multiline: true },
+                  )}
+                  {renderEditField(
+                    t("profile.yearsOfExperience"),
+                    editData.experienceYears,
+                    (text) =>
+                      setEditData((current) => ({
+                        ...current,
+                        experienceYears: text,
+                      })),
+                    { keyboardType: "numeric" },
+                  )}
+                  {renderEditField(
+                    t("profile.educationSummary"),
+                    editData.educationSummary,
+                    (text) =>
+                      setEditData((current) => ({
+                        ...current,
+                        educationSummary: text,
+                      })),
+                    { multiline: true },
+                  )}
+                  {renderEditField(
+                    t("profile.categoryIds"),
+                    editData.categoryIds,
+                    (text) =>
+                      setEditData((current) => ({
+                        ...current,
+                        categoryIds: text,
+                      })),
+                  )}
+
+                  <View style={styles.editSection}>
+                    <Text style={styles.editSectionTitle}>
+                      {t("profile.workExperience")}
                     </Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editData.profession}
-                      onChangeText={(text) =>
-                        setEditData({ ...editData, profession: text })
+                    {editData.experiences.map((item, index) => (
+                      <View
+                        key={`experience-${index}`}
+                        style={styles.editRecord}
+                      >
+                        <View style={styles.editRecordHeader}>
+                          <Text style={styles.editRecordTitle}>
+                            {t("profile.experienceEntry", {
+                              count: index + 1,
+                            })}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() =>
+                              setEditData((current) => ({
+                                ...current,
+                                experiences: current.experiences.filter(
+                                  (_, itemIndex) => itemIndex !== index,
+                                ),
+                              }))
+                            }
+                          >
+                            <Text style={styles.removeRecordText}>
+                              {t("profile.remove")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {renderEditField(
+                          t("profile.company"),
+                          item.companyName,
+                          (text) =>
+                            updateExperience(index, { companyName: text }),
+                        )}
+                        {renderEditField(
+                          t("profile.jobTitle"),
+                          item.jobTitle,
+                          (text) => updateExperience(index, { jobTitle: text }),
+                        )}
+                        {renderEditField(
+                          t("profile.description"),
+                          item.description ?? "",
+                          (text) =>
+                            updateExperience(index, { description: text }),
+                          { multiline: true },
+                        )}
+                        {renderEditField(
+                          t("profile.startDateFormat"),
+                          item.startDate,
+                          (text) =>
+                            updateExperience(index, { startDate: text }),
+                        )}
+                        {!item.isCurrent &&
+                          renderEditField(
+                            t("profile.endDateFormat"),
+                            item.endDate ?? "",
+                            (text) =>
+                              updateExperience(index, { endDate: text }),
+                          )}
+                        <View style={styles.preferenceRow}>
+                          <Text style={styles.preferenceLabel}>
+                            {t("profile.currentPosition")}
+                          </Text>
+                          <Switch
+                            value={item.isCurrent}
+                            onValueChange={(value) =>
+                              updateExperience(index, {
+                                isCurrent: value,
+                                endDate: value ? null : item.endDate,
+                              })
+                            }
+                            trackColor={{ false: "#D1D5DB", true: "#FF6B35" }}
+                            thumbColor="#FFFFFF"
+                          />
+                        </View>
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.addRecordButton}
+                      onPress={() =>
+                        setEditData((current) => ({
+                          ...current,
+                          experiences: [
+                            ...current.experiences,
+                            {
+                              companyName: "",
+                              jobTitle: "",
+                              description: "",
+                              startDate: "",
+                              endDate: null,
+                              isCurrent: false,
+                            },
+                          ],
+                        }))
                       }
-                      placeholder={t("profile.profession")}
-                    />
+                    >
+                      <Text style={styles.addRecordText}>
+                        + {t("profile.addExperience")}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>
-                      {t("profile.description")}
+                  <View style={styles.editSection}>
+                    <Text style={styles.editSectionTitle}>
+                      {t("profile.education")}
                     </Text>
-                    <TextInput
-                      style={[styles.input, styles.textArea]}
-                      value={editData.description}
-                      onChangeText={(text) =>
-                        setEditData({ ...editData, description: text })
+                    {editData.education.map((item, index) => (
+                      <View
+                        key={`education-${index}`}
+                        style={styles.editRecord}
+                      >
+                        <View style={styles.editRecordHeader}>
+                          <Text style={styles.editRecordTitle}>
+                            {t("profile.educationEntry", {
+                              count: index + 1,
+                            })}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() =>
+                              setEditData((current) => ({
+                                ...current,
+                                education: current.education.filter(
+                                  (_, itemIndex) => itemIndex !== index,
+                                ),
+                              }))
+                            }
+                          >
+                            <Text style={styles.removeRecordText}>
+                              {t("profile.remove")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {renderEditField(
+                          t("profile.institution"),
+                          item.institution,
+                          (text) =>
+                            updateEducation(index, { institution: text }),
+                        )}
+                        {renderEditField(
+                          t("profile.qualification"),
+                          item.qualification,
+                          (text) =>
+                            updateEducation(index, { qualification: text }),
+                        )}
+                        {renderEditField(
+                          t("profile.description"),
+                          item.description ?? "",
+                          (text) =>
+                            updateEducation(index, { description: text }),
+                          { multiline: true },
+                        )}
+                        {renderEditField(
+                          t("profile.startDateFormat"),
+                          item.startDate ?? "",
+                          (text) => updateEducation(index, { startDate: text }),
+                        )}
+                        {renderEditField(
+                          t("profile.endDateFormat"),
+                          item.endDate ?? "",
+                          (text) => updateEducation(index, { endDate: text }),
+                        )}
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.addRecordButton}
+                      onPress={() =>
+                        setEditData((current) => ({
+                          ...current,
+                          education: [
+                            ...current.education,
+                            {
+                              institution: "",
+                              qualification: "",
+                              description: "",
+                              startDate: "",
+                              endDate: null,
+                            },
+                          ],
+                        }))
                       }
-                      placeholder={t("profile.description")}
-                      multiline
-                      numberOfLines={4}
-                    />
+                    >
+                      <Text style={styles.addRecordText}>
+                        + {t("profile.addEducation")}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
 
-                  <View style={styles.inputGroup}>
-                    <Text style={styles.inputLabel}>
-                      {t("profile.hourlyRate")}
+                  <View style={styles.editSection}>
+                    <Text style={styles.editSectionTitle}>
+                      {t("profile.portfolio")}
                     </Text>
-                    <TextInput
-                      style={styles.input}
-                      value={editData.hourlyRate}
-                      onChangeText={(text) =>
-                        setEditData({ ...editData, hourlyRate: text })
+                    {editData.portfolio.map((item, index) => (
+                      <View
+                        key={`portfolio-${index}`}
+                        style={styles.editRecord}
+                      >
+                        <View style={styles.editRecordHeader}>
+                          <Text style={styles.editRecordTitle}>
+                            {t("profile.project", { count: index + 1 })}
+                          </Text>
+                          <TouchableOpacity
+                            onPress={() =>
+                              setEditData((current) => ({
+                                ...current,
+                                portfolio: current.portfolio.filter(
+                                  (_, itemIndex) => itemIndex !== index,
+                                ),
+                              }))
+                            }
+                          >
+                            <Text style={styles.removeRecordText}>
+                              {t("profile.remove")}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        {renderEditField("Title", item.title, (text) =>
+                          updatePortfolio(index, { title: text }),
+                        )}
+                        {renderEditField(
+                          t("profile.description"),
+                          item.description ?? "",
+                          (text) =>
+                            updatePortfolio(index, { description: text }),
+                          { multiline: true },
+                        )}
+                        {renderEditField(
+                          t("profile.completedDateFormat"),
+                          item.completedAt ?? "",
+                          (text) =>
+                            updatePortfolio(index, { completedAt: text }),
+                        )}
+                      </View>
+                    ))}
+                    <TouchableOpacity
+                      style={styles.addRecordButton}
+                      onPress={() =>
+                        setEditData((current) => ({
+                          ...current,
+                          portfolio: [
+                            ...current.portfolio,
+                            { title: "", description: "", completedAt: "" },
+                          ],
+                        }))
                       }
-                      placeholder={t("profile.hourlyRate")}
-                      keyboardType="numeric"
-                    />
+                    >
+                      <Text style={styles.addRecordText}>
+                        + {t("profile.addProject")}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 </>
               )}
@@ -809,8 +1265,8 @@ export default function ProfileScreen() {
                 mode="contained"
                 onPress={handleSaveProfile}
                 style={styles.saveButton}
-                loading={isLoading}
-                disabled={isLoading}
+                loading={isUpdating}
+                disabled={isUpdating || isLoading}
               >
                 {t("profile.saveChanges")}
               </Button>
@@ -1146,6 +1602,51 @@ const styles = StyleSheet.create({
   textArea: {
     height: 100,
     textAlignVertical: "top",
+  },
+  editSection: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  editSectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#1F2937",
+    marginBottom: 8,
+  },
+  editRecord: {
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 8,
+    backgroundColor: "#F9FAFB",
+  },
+  editRecordHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  editRecordTitle: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#374151",
+  },
+  removeRecordText: {
+    color: "#DC2626",
+    fontSize: 13,
+    fontWeight: "500",
+  },
+  addRecordButton: {
+    alignSelf: "flex-start",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#FF6B35",
+    borderRadius: 8,
+  },
+  addRecordText: {
+    color: "#FF6B35",
+    fontSize: 14,
+    fontWeight: "600",
   },
   saveButton: {
     backgroundColor: "#FF6B35",

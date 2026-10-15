@@ -1,5 +1,6 @@
 // app/(public)/home.tsx
 import JobCard from "@/components/Jobs/JobCard";
+import DistrictDropdown from "@/components/DistrictDropdown";
 import { colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -8,10 +9,7 @@ import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Dimensions,
-  FlatList,
   Image,
-  Modal,
-  Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -29,39 +27,6 @@ import { selectCurrentUser } from "../../../store/profile/profileSelector";
 import { fetchCurrentProfile } from "../../../store/profile/profileThunk";
 
 const { width } = Dimensions.get("window");
-
-// ============================================================
-// DISTRICTS
-// ============================================================
-
-const SRI_LANKA_DISTRICTS = [
-  "All Districts",
-  "Colombo",
-  "Gampaha",
-  "Kalutara",
-  "Kandy",
-  "Matale",
-  "Nuwara Eliya",
-  "Galle",
-  "Matara",
-  "Hambantota",
-  "Jaffna",
-  "Kilinochchi",
-  "Mannar",
-  "Vavuniya",
-  "Mullaitivu",
-  "Batticaloa",
-  "Ampara",
-  "Trincomalee",
-  "Kurunegala",
-  "Puttalam",
-  "Anuradhapura",
-  "Polonnaruwa",
-  "Badulla",
-  "Moneragala",
-  "Ratnapura",
-  "Kegalle",
-];
 
 // ============================================================
 // CATEGORIES
@@ -82,7 +47,6 @@ export default function PublicHomeScreen() {
   const isAuthenticated = Boolean(apiAuthUser || profileUser);
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const [isDistrictDropdownOpen, setIsDistrictDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [refreshing, setRefreshing] = useState(false);
 
@@ -213,11 +177,6 @@ export default function PublicHomeScreen() {
     setSelectedCategory(category);
   };
 
-  const handleDistrictSelect = (district: string) => {
-    setSelectedDistrict(district);
-    setIsDistrictDropdownOpen(false);
-  };
-
   const clearFilters = () => {
     setSelectedDistrict("All Districts");
     setSelectedCategory("All");
@@ -227,60 +186,6 @@ export default function PublicHomeScreen() {
   // ==========================================================
   // RENDER HELPERS
   // ==========================================================
-
-  const renderDistrictDropdown = () => (
-    <Modal
-      visible={isDistrictDropdownOpen}
-      transparent
-      animationType="fade"
-      onRequestClose={() => setIsDistrictDropdownOpen(false)}
-    >
-      <Pressable
-        style={styles.modalOverlay}
-        onPress={() => setIsDistrictDropdownOpen(false)}
-      >
-        <Pressable
-          style={styles.dropdownModal}
-          onPress={(event) => event.stopPropagation()}
-        >
-          <View style={styles.dropdownHeader}>
-            <Text style={styles.dropdownTitle}>{t("jobs.selectDistrict")}</Text>
-            <TouchableOpacity onPress={() => setIsDistrictDropdownOpen(false)}>
-              <Ionicons name="close" size={24} color="#1F2937" />
-            </TouchableOpacity>
-          </View>
-
-          <FlatList
-            data={SRI_LANKA_DISTRICTS}
-            keyExtractor={(item) => item}
-            renderItem={({ item }) => (
-              <TouchableOpacity
-                style={[
-                  styles.dropdownItem,
-                  selectedDistrict === item && styles.dropdownItemSelected,
-                ]}
-                onPress={() => handleDistrictSelect(item)}
-              >
-                <Text
-                  style={[
-                    styles.dropdownItemText,
-                    selectedDistrict === item &&
-                      styles.dropdownItemTextSelected,
-                  ]}
-                >
-                  {item}
-                </Text>
-                {selectedDistrict === item && (
-                  <Ionicons name="checkmark" size={20} color="#FF6B35" />
-                )}
-              </TouchableOpacity>
-            )}
-            showsVerticalScrollIndicator={false}
-          />
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
 
   const renderWorkerCard = (worker: HomeWorker) => (
     <TouchableOpacity
@@ -427,18 +332,14 @@ export default function PublicHomeScreen() {
         </View>
         <View style={styles.filterDistrict}>
           {/* District */}
-          <TouchableOpacity
-            style={styles.filterButton}
-            onPress={() => setIsDistrictDropdownOpen(true)}
-          >
-            <Ionicons name="location-outline" size={18} color="#FF6B35" />
-            <Text style={styles.filterButtonText}>
-              {selectedDistrict.length > 12
-                ? `${selectedDistrict.substring(0, 12)}...`
-                : selectedDistrict}
-            </Text>
-            <Ionicons name="chevron-down" size={16} color="#6B7280" />
-          </TouchableOpacity>
+          <DistrictDropdown
+            value={selectedDistrict}
+            onChange={setSelectedDistrict}
+            includeAllDistricts
+            leadingIcon="location-outline"
+            buttonStyle={styles.filterButton}
+            valueStyle={styles.filterButtonText}
+          />
         </View>
         <View style={styles.heroButtons}>
           {!isAuthenticated && (
@@ -629,7 +530,6 @@ export default function PublicHomeScreen() {
         </Button>
       </View>
 
-      {renderDistrictDropdown()}
     </ScrollView>
   );
 }
@@ -682,60 +582,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end",
-  },
-
-  dropdownModal: {
-    backgroundColor: "#FFFFFF",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: "70%",
-    paddingBottom: 20,
-  },
-
-  dropdownHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E7EB",
-  },
-
-  dropdownTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1F2937",
-  },
   filterDistrict: {
     paddingHorizontal: 20,
-  },
-
-  dropdownItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F3F4F6",
-  },
-
-  dropdownItemSelected: {
-    backgroundColor: "#FFF5F0",
-  },
-
-  dropdownItemText: {
-    fontSize: 15,
-    color: "#1F2937",
-  },
-
-  dropdownItemTextSelected: {
-    color: "#FF6B35",
-    fontWeight: "600",
   },
 
   heroSection: {

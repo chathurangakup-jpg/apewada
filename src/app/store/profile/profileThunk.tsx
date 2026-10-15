@@ -2,15 +2,36 @@ import { createAsyncThunk } from "@reduxjs/toolkit";
 import { removeStoredAuthToken } from "../auth/authServices";
 import {
   CurrentUserProfile,
+  UpdateCustomerProfilePayload,
+  UpdateWorkerProfilePayload,
   getCurrentUserProfile,
   getSavedSessionToken,
+  patchCustomerProfile,
+  patchWorkerProfile,
 } from "./profileServices";
 
-type ProfileThunkConfig = { rejectValue: string };
-type ApiAuthState = { apiAuth?: { token?: string | null } };
+type ProfileThunkConfig = {
+  rejectValue: string;
+};
+
+type ApiAuthState = {
+  apiAuth?: {
+    token?: string | null;
+  };
+};
 
 const getTokenFromState = (state: unknown) =>
   (state as ApiAuthState).apiAuth?.token ?? null;
+
+async function requireToken(getState: () => unknown): Promise<string> {
+  const token = getTokenFromState(getState()) ?? (await getSavedSessionToken());
+
+  if (!token) {
+    throw new Error("Your session has expired. Please log in again.");
+  }
+
+  return token;
+}
 
 export const fetchCurrentProfile = createAsyncThunk<
   CurrentUserProfile,
@@ -20,9 +41,7 @@ export const fetchCurrentProfile = createAsyncThunk<
   "profile/fetchCurrentProfile",
   async (_, { getState, rejectWithValue }) => {
     try {
-      const token =
-        getTokenFromState(getState()) ?? (await getSavedSessionToken());
-      if (!token) return rejectWithValue("Your session has expired");
+      const token = await requireToken(getState);
       return await getCurrentUserProfile(token);
     } catch (error) {
       return rejectWithValue(
@@ -33,6 +52,54 @@ export const fetchCurrentProfile = createAsyncThunk<
   {
     condition: async (_, { getState }) =>
       Boolean(getTokenFromState(getState()) ?? (await getSavedSessionToken())),
+  },
+);
+
+export const updateCustomerProfile = createAsyncThunk<
+  CurrentUserProfile,
+  UpdateCustomerProfilePayload,
+  ProfileThunkConfig
+>(
+  "profile/updateCustomerProfile",
+  async (payload, { getState, rejectWithValue }) => {
+    try {
+      const token = await requireToken(getState);
+
+      await patchCustomerProfile(token, payload);
+
+      // Fetch the server's latest profile after updating.
+      return await getCurrentUserProfile(token);
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Unable to update customer profile",
+      );
+    }
+  },
+);
+
+export const updateWorkerProfile = createAsyncThunk<
+  CurrentUserProfile,
+  UpdateWorkerProfilePayload,
+  ProfileThunkConfig
+>(
+  "profile/updateWorkerProfile",
+  async (payload, { getState, rejectWithValue }) => {
+    try {
+      const token = await requireToken(getState);
+
+      await patchWorkerProfile(token, payload);
+
+      // Fetch the server's latest profile after updating.
+      return await getCurrentUserProfile(token);
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Unable to update worker profile",
+      );
+    }
   },
 );
 
