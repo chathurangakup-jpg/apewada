@@ -17,7 +17,10 @@ export default function JobCard({ job, onPress }: JobCardProps) {
       return;
     }
 
-    router.push(`/(public)/home/jobs/${job.id}`);
+    router.push({
+      pathname: "/(public)/(tabs)/home/jobs/[jobId]",
+      params: { jobId: String(job.id) },
+    });
   };
 
   return (

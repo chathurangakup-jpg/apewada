@@ -1,6 +1,7 @@
 // app/(public)/home.tsx
-import JobCard from "@/components/Jobs/JobCard";
 import DistrictDropdown from "@/components/DistrictDropdown";
+import HomeWorkerTile from "@/components/HomeWorkerTile";
+import JobCard from "@/components/Jobs/JobCard";
 import { colors } from "@/constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -8,7 +9,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   RefreshControl,
   ScrollView,
@@ -25,8 +25,6 @@ import { fetchHomeData } from "../../../store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { selectCurrentUser } from "../../../store/profile/profileSelector";
 import { fetchCurrentProfile } from "../../../store/profile/profileThunk";
-
-const { width } = Dimensions.get("window");
 
 // ============================================================
 // CATEGORIES
@@ -45,6 +43,14 @@ export default function PublicHomeScreen() {
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const profileUser = useAppSelector(selectCurrentUser);
   const isAuthenticated = Boolean(apiAuthUser || profileUser);
+  const authenticatedUser = profileUser ?? apiAuthUser;
+  const authenticatedUserRole = authenticatedUser?.role.toUpperCase();
+  const authenticatedUserRoleLabel =
+    authenticatedUserRole === "WORKER"
+      ? t("home.workerRole")
+      : authenticatedUserRole === "CUSTOMER"
+        ? t("home.customerRole")
+        : null;
   const [selectedDistrict, setSelectedDistrict] = useState("All Districts");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,7 +82,9 @@ export default function PublicHomeScreen() {
           (!searchQuery || searchText.includes(searchQuery.toLowerCase()))
         );
       })
-      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
+      .sort(
+        (a, b) => Number(b.averageRating ?? 0) - Number(a.averageRating ?? 0),
+      )
       .slice(0, 5);
   }, [topRatedWorkers, selectedCategory, selectedDistrict, searchQuery]);
 
@@ -187,54 +195,6 @@ export default function PublicHomeScreen() {
   // RENDER HELPERS
   // ==========================================================
 
-  const renderWorkerCard = (worker: HomeWorker) => (
-    <TouchableOpacity
-      key={worker.id}
-      style={styles.workerCard}
-      onPress={() => router.push(`/(public)/home/workers/${worker.id}`)}
-    >
-      <Image
-        source={{
-          uri: worker.avatarPath
-            ? worker.avatarPath
-            : "https://i.pravatar.cc/150",
-        }}
-        style={styles.workerAvatar}
-      />
-
-      {/* Worker name */}
-      <Text style={styles.workerName}>{worker.name}</Text>
-
-      {/* Profession */}
-      <Text style={styles.workerProfession}>
-        {worker.categories?.map((category) => category.nameEn).join(", ") ||
-          "General Worker"}
-      </Text>
-
-      {/* Rating and reviews */}
-      <View style={styles.workerRating}>
-        <Ionicons name="star" size={14} color="#FFB800" />
-
-        <Text style={styles.workerRatingText}>
-          {Number(worker.averageRating || 0).toFixed(1)}
-        </Text>
-
-        <Text style={styles.workerJobs}>
-          ({worker.reviewCount || 0} reviews)
-        </Text>
-      </View>
-
-      {/* City and district */}
-      <View style={styles.workerLocation}>
-        <Ionicons name="location" size={12} color="#6B7280" />
-
-        <Text style={styles.workerLocationText}>
-          {[worker.city, worker.district].filter(Boolean).join(", ")}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
   // const renderJobCard = (job: any) => (
   //   <TouchableOpacity
   //     key={job.id}
@@ -330,6 +290,32 @@ export default function PublicHomeScreen() {
             style={styles.heroImage}
           />
         </View>
+
+        {isAuthenticated && (
+          <View style={styles.welcomeCard}>
+            <View style={styles.welcomeHeader}>
+              <View style={styles.welcomeIcon}>
+                <Ionicons name="person-outline" size={22} color="#FF6B35" />
+              </View>
+              <View style={styles.welcomeUserDetails}>
+                <Text style={styles.welcomeTitle}>
+                  {t("home.welcome", {
+                    name: authenticatedUser?.name || t("home.member"),
+                  })}
+                </Text>
+                {authenticatedUserRoleLabel && (
+                  <Text style={styles.welcomeRole}>
+                    {authenticatedUserRoleLabel}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <Text style={styles.welcomeDescription}>
+              {t("home.welcomeIntro")}
+            </Text>
+          </View>
+        )}
+
         <View style={styles.filterDistrict}>
           {/* District */}
           <DistrictDropdown
@@ -353,14 +339,16 @@ export default function PublicHomeScreen() {
               {t("home.getStarted")}
             </Button>
           )}
-          <Button
-            mode="outlined"
-            onPress={() => router.push("/(public)/workers")}
-            style={styles.secondaryButton}
-            labelStyle={styles.secondaryButtonLabel}
-          >
-            {t("home.browseWorkers")}
-          </Button>
+          {!isAuthenticated && (
+            <Button
+              mode="outlined"
+              onPress={() => router.push("/(public)/workers")}
+              style={styles.secondaryButton}
+              labelStyle={styles.secondaryButtonLabel}
+            >
+              {t("home.browseWorkers")}
+            </Button>
+          )}
         </View>
       </View>
 
@@ -453,7 +441,9 @@ export default function PublicHomeScreen() {
               : t("home.topRatedWorkers")}
           </Text>
           <TouchableOpacity
-            onPress={() => router.push(`/home/workers/workers`)}
+            onPress={() =>
+              router.push("/(public)/(tabs)/home/workers/allWorkers")
+            }
           >
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
@@ -461,7 +451,18 @@ export default function PublicHomeScreen() {
 
         {filteredWorkers.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-            {filteredWorkers.map(renderWorkerCard)}
+            {filteredWorkers.map((worker) => (
+              <HomeWorkerTile
+                key={worker.id}
+                worker={worker}
+                onPress={() =>
+                  router.push({
+                    pathname: "/(public)/(tabs)/home/workers/[workerId]",
+                    params: { workerId: worker.id },
+                  })
+                }
+              />
+            ))}
           </ScrollView>
         ) : (
           <View style={styles.emptyState}>
@@ -490,7 +491,7 @@ export default function PublicHomeScreen() {
               : t("home.recentJobs")}
           </Text>
           <TouchableOpacity
-            onPress={() => router.push("/(public)/home/jobs/jobs")}
+            onPress={() => router.push("/(public)/(tabs)/home/jobs/all")}
           >
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
@@ -517,19 +518,20 @@ export default function PublicHomeScreen() {
           CTA
       ====================================================== */}
 
-      <View style={styles.ctaSection}>
-        <Text style={styles.ctaTitle}>{t("home.readyCtaTitle")}</Text>
-        <Text style={styles.ctaText}>{t("home.readyCtaText")}</Text>
-        <Button
-          mode="contained"
-          onPress={handleGetStarted}
-          style={styles.ctaButton}
-          labelStyle={styles.ctaButtonLabel}
-        >
-          {t("home.signUpNow")}
-        </Button>
-      </View>
-
+      {!isAuthenticated && (
+        <View style={styles.ctaSection}>
+          <Text style={styles.ctaTitle}>{t("home.readyCtaTitle")}</Text>
+          <Text style={styles.ctaText}>{t("home.readyCtaText")}</Text>
+          <Button
+            mode="contained"
+            onPress={handleGetStarted}
+            style={styles.ctaButton}
+            labelStyle={styles.ctaButtonLabel}
+          >
+            {t("home.signUpNow")}
+          </Button>
+        </View>
+      )}
     </ScrollView>
   );
 }
@@ -584,6 +586,55 @@ const styles = StyleSheet.create({
 
   filterDistrict: {
     paddingHorizontal: 20,
+  },
+
+  welcomeCard: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#FDE2D5",
+    borderRadius: 14,
+    borderWidth: 1,
+    marginHorizontal: 20,
+    marginBottom: 16,
+    padding: 16,
+  },
+
+  welcomeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  welcomeIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#FFF5F0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+
+  welcomeUserDetails: {
+    flex: 1,
+  },
+
+  welcomeTitle: {
+    color: "#1F2937",
+    fontSize: 16,
+    fontWeight: "700",
+  },
+
+  welcomeRole: {
+    color: "#FF6B35",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+
+  welcomeDescription: {
+    color: "#6B7280",
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 12,
   },
 
   heroSection: {
@@ -736,86 +787,6 @@ const styles = StyleSheet.create({
     color: "#1F2937",
     marginTop: 4,
     textAlign: "center",
-  },
-
-  workerCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 12,
-    marginRight: 12,
-    alignItems: "center",
-    width: 140,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-
-  workerAvatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-  },
-
-  workerName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1F2937",
-    marginTop: 8,
-    textAlign: "center",
-  },
-
-  workerProfession: {
-    fontSize: 12,
-    color: "#6B7280",
-    marginTop: 2,
-  },
-
-  workerRating: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-
-  workerRatingText: {
-    fontSize: 12,
-    fontWeight: "500",
-    color: "#1F2937",
-    marginLeft: 2,
-  },
-
-  workerJobs: {
-    fontSize: 11,
-    color: "#6B7280",
-    marginLeft: 4,
-  },
-
-  verifiedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-
-  verifiedText: {
-    fontSize: 11,
-    color: "#34C759",
-    marginLeft: 2,
-  },
-
-  workerLocation: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-    gap: 2,
-  },
-
-  workerLocationText: {
-    fontSize: 10,
-    color: "#6B7280",
   },
 
   jobCard: {
