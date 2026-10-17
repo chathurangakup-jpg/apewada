@@ -4,9 +4,11 @@ import {
   CurrentUserProfile,
   UpdateCustomerProfilePayload,
   UpdateWorkerProfilePayload,
+  WorkerAvailabilityStatus,
   getCurrentUserProfile,
   getSavedSessionToken,
   patchCustomerProfile,
+  patchWorkerAvailabilityStatus,
   patchWorkerProfile,
 } from "./profileServices";
 
@@ -98,6 +100,41 @@ export const updateWorkerProfile = createAsyncThunk<
         error instanceof Error
           ? error.message
           : "Unable to update worker profile",
+      );
+    }
+  },
+);
+
+export const updateWorkerAvailabilityStatus = createAsyncThunk<
+  CurrentUserProfile,
+  WorkerAvailabilityStatus,
+  ProfileThunkConfig
+>(
+  "profile/updateWorkerAvailabilityStatus",
+  async (availabilityStatus, { getState, rejectWithValue }) => {
+    try {
+      const token = await requireToken(getState);
+      console.log(
+        "Updating worker availability status to:",
+        availabilityStatus,
+      );
+      const availabilityResponse = await patchWorkerAvailabilityStatus(
+        token,
+        availabilityStatus,
+      );
+      console.log(
+        "Worker availability status API response:",
+        availabilityResponse,
+      );
+
+      const profileResponse = await getCurrentUserProfile(token);
+      console.log("Current user profile API response:", profileResponse);
+      return profileResponse;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Unable to update worker availability",
       );
     }
   },

@@ -52,6 +52,7 @@ import {
   fetchCurrentProfile,
   logoutCurrentUser,
   updateCustomerProfile,
+  updateWorkerAvailabilityStatus,
   updateWorkerProfile,
 } from "./profileThunk";
 
@@ -122,6 +123,22 @@ const profileSlice = createSlice({
         state.isUpdating = false;
         state.error =
           action.payload ?? action.error.message ?? "Unable to update profile";
+      })
+
+      .addCase(updateWorkerAvailabilityStatus.pending, (state) => {
+        state.isUpdating = true;
+        state.error = null;
+      })
+      .addCase(updateWorkerAvailabilityStatus.fulfilled, (state, action) => {
+        state.isUpdating = false;
+        state.data = action.payload;
+      })
+      .addCase(updateWorkerAvailabilityStatus.rejected, (state, action) => {
+        state.isUpdating = false;
+        state.error =
+          action.payload ??
+          action.error.message ??
+          "Unable to update worker availability";
       })
 
       .addCase(logoutCurrentUser.fulfilled, () => initialState);

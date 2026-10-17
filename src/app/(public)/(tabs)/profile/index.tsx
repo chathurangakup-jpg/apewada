@@ -29,6 +29,7 @@ import {
   selectCurrentWorkerProfile,
   selectProfileLoading,
   selectProfileUpdating,
+  selectWorkerAvailabilityStatus,
 } from "../../../store/profile/profileSelector";
 import {
   WorkerEducationRecord,
@@ -39,6 +40,7 @@ import {
   fetchCurrentProfile,
   logoutCurrentUser,
   updateCustomerProfile as updateApiCustomerProfile,
+  updateWorkerAvailabilityStatus,
   updateWorkerProfile as updateApiWorkerProfile,
 } from "../../../store/profile/profileThunk";
 import { selectCustomerProfile } from "../../../store/users/userSelectors";
@@ -75,6 +77,9 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
 
   const apiProfile = useAppSelector(selectCurrentWorkerProfile);
+  const workerAvailabilityStatus = useAppSelector(
+    selectWorkerAvailabilityStatus,
+  );
   const apiCustomerProfile = useAppSelector(selectCurrentCustomerProfile);
   const currentUser = useAppSelector(selectCurrentUser);
   const authUser = useAppSelector(selectApiAuthUser);
@@ -425,6 +430,25 @@ export default function ProfileScreen() {
     }));
   };
 
+  const handleAvailabilityChange = async (available: boolean) => {
+    try {
+      await dispatch(
+        updateWorkerAvailabilityStatus(
+          available ? "AVAILABLE" : "UNAVAILABLE",
+        ),
+      ).unwrap();
+    } catch (error) {
+      Alert.alert(
+        t("profile.error"),
+        typeof error === "string"
+          ? error
+          : error instanceof Error
+            ? error.message
+            : t("profile.availabilityUpdateFailed"),
+      );
+    }
+  };
+
   const renderCustomerProfile = () => (
     <View style={styles.profileContent}>
       <Card style={styles.statsCard}>
@@ -679,7 +703,7 @@ export default function ProfileScreen() {
         </Card>
       )}
 
-      {workerProfile?.availability && (
+      {isWorker && apiProfile && (
         <Card style={styles.infoCard}>
           <Card.Content>
             <View style={styles.infoHeader}>
@@ -687,25 +711,35 @@ export default function ProfileScreen() {
               <Text style={styles.infoTitle}>{t("profile.availability")}</Text>
             </View>
             <View style={styles.availabilityStatus}>
-              <View
-                style={[
-                  styles.statusDot,
-                  {
-                    backgroundColor:
-                      workerProfile.availability.status === "available"
-                        ? "#34C759"
-                        : workerProfile.availability.status === "busy"
-                          ? "#FF9500"
+              <View style={styles.availabilityLabel}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor:
+                        workerAvailabilityStatus === "AVAILABLE"
+                          ? "#34C759"
                           : "#FF3B30",
-                  },
-                ]}
+                    },
+                  ]}
+                />
+                <Text style={styles.availabilityText}>
+                  {t(
+                    workerAvailabilityStatus === "AVAILABLE"
+                      ? "available"
+                      : "profile.unavailable",
+                  )}
+                </Text>
+              </View>
+              <Switch
+                value={workerAvailabilityStatus === "AVAILABLE"}
+                onValueChange={handleAvailabilityChange}
+                disabled={isUpdating}
+                accessibilityLabel={t("profile.availability")}
+                trackColor={{ false: "#D1D5DB", true: "#34C759" }}
               />
-              <Text style={styles.availabilityText}>
-                {workerProfile.availability.status.charAt(0).toUpperCase() +
-                  workerProfile.availability.status.slice(1)}
-              </Text>
             </View>
-            {workerProfile.availability.schedule?.map((schedule, index) => (
+            {workerProfile?.availability?.schedule?.map((schedule, index) => (
               <Text key={index} style={styles.scheduleText}>
                 {schedule}
               </Text>
@@ -1504,8 +1538,13 @@ const styles = StyleSheet.create({
   },
   availabilityStatus: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 8,
+  },
+  availabilityLabel: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   statusDot: {

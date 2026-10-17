@@ -188,6 +188,8 @@ export interface UpdateWorkerProfilePayload {
   portfolio: WorkerPortfolioRecord[];
 }
 
+export type WorkerAvailabilityStatus = "AVAILABLE" | "UNAVAILABLE";
+
 interface ApiResponse<T> {
   success: boolean;
   message?: string;
@@ -259,5 +261,17 @@ export async function patchWorkerProfile(
     "/api/user/me/worker-profile",
     "PATCH",
     payload,
+  );
+}
+
+export async function patchWorkerAvailabilityStatus(
+  token: string,
+  availabilityStatus: WorkerAvailabilityStatus,
+): Promise<unknown> {
+  return authorizedRequest<unknown>(
+    token,
+    "/api/worker/availability-status",
+    "PATCH",
+    { availabilityStatus },
   );
 }

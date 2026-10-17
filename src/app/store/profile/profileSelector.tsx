@@ -31,6 +31,9 @@ export const selectCurrentWorkerProfile = (
     : null;
 };
 
+export const selectWorkerAvailabilityStatus = (state: RootState) =>
+  selectCurrentWorkerProfile(state)?.availability_status ?? null;
+
 export const selectCurrentCustomerProfile = (
   state: RootState,
 ): CustomerProfile | null => {
