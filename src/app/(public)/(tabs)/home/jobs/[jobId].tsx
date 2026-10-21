@@ -1,6 +1,17 @@
+import {
+  selectJobById,
+  selectJobDetailsError,
+  selectJobDetailsLoading,
+} from "@/app/store/home/homeSelector";
+import { fetchJobById } from "@/app/store/home/homeThunk";
+import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
+import { selectApiAuthUser } from "@/app/store/auth/authSelector";
+import { selectCurrentUser } from "@/app/store/profile/profileSelector";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Image,
@@ -10,7 +21,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { useGetJobByIdQuery } from "../../../../store/jobs/jobApi";
 
 // ============================================================
 // SCREEN
@@ -18,34 +28,31 @@ import { useGetJobByIdQuery } from "../../../../store/jobs/jobApi";
 
 export default function JobDetailsScreen() {
   const router = useRouter();
-
+  const dispatch = useAppDispatch();
+  const { t, i18n } = useTranslation();
   const params = useLocalSearchParams<{
     jobId: string | string[];
   }>();
-
-  // ============================================================
-  // JOB ID
-  // ============================================================
-
   const jobId = Array.isArray(params.jobId) ? params.jobId[0] : params.jobId;
+  const job = useAppSelector((state) =>
+    jobId ? selectJobById(state, jobId) : null,
+  );
+  const isLoading = useAppSelector((state) =>
+    jobId ? selectJobDetailsLoading(state, jobId) : false,
+  );
+  const error = useAppSelector((state) =>
+    jobId ? selectJobDetailsError(state, jobId) : null,
+  );
+  const apiAuthUser = useAppSelector(selectApiAuthUser);
+  const profileUser = useAppSelector(selectCurrentUser);
+  const isWorkerViewer =
+    (profileUser ?? apiAuthUser)?.role.toUpperCase() === "WORKER";
 
-  // ============================================================
-  // FETCH JOB
-  // ============================================================
-
-  const {
-    data: job,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useGetJobByIdQuery(jobId!, {
-    skip: !jobId,
-  });
-
-  // ============================================================
-  // LOADING
-  // ============================================================
+  useEffect(() => {
+    if (jobId && !job && !isLoading && !error) {
+      void dispatch(fetchJobById(jobId));
+    }
+  }, [dispatch, error, isLoading, job, jobId]);
 
   if (isLoading) {
     return (
@@ -57,26 +64,28 @@ export default function JobDetailsScreen() {
     );
   }
 
-  // ============================================================
-  // ERROR
-  // ============================================================
-
   if (error || !job) {
     return (
       <View style={styles.centerContainer}>
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
 
-        <Text style={styles.errorTitle}>Job Not Found</Text>
+        <Text style={styles.errorTitle}>
+          {error || t("jobs.jobDetailsNotFound")}
+        </Text>
 
         <Text style={styles.errorText}>
-          We couldn't load this job. It may have been removed or is no longer
-          available.
+          We couldn&apos;t load this job. It may have been removed or is no
+          longer available.
         </Text>
 
         <View style={styles.errorActions}>
           <TouchableOpacity
             style={styles.retryButton}
-            onPress={() => refetch()}
+            onPress={() => {
+              if (jobId) {
+                void dispatch(fetchJobById(jobId));
+              }
+            }}
           >
             <Ionicons name="refresh-outline" size={18} color="#FFFFFF" />
 
@@ -94,31 +103,30 @@ export default function JobDetailsScreen() {
     );
   }
 
-  // ============================================================
-  // FORMAT BUDGET
-  // ============================================================
+  const formatDate = (value?: string | null) => {
+    if (!value) {
+      return "N/A";
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? "N/A"
+      : date.toLocaleDateString(i18n.language, {
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+  };
 
-  const formattedBudget = new Intl.NumberFormat("en-LK", {
-    style: "currency",
-    currency: "LKR",
-    maximumFractionDigits: 0,
-  }).format(job.budget);
-
-  // ============================================================
-  // FORMAT DATE
-  // ============================================================
-
-  const formattedDate = job.createdAt
-    ? new Date(job.createdAt).toLocaleDateString("en-LK", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      })
-    : "N/A";
-
-  // ============================================================
-  // STATUS
-  // ============================================================
+  const formattedDate = formatDate(job.createdAt);
+  const preferredDate = formatDate(job.preferredDate);
+  const categoryName = i18n.resolvedLanguage?.startsWith("si")
+    ? job.categoryNameSi || job.categoryNameEn
+    : job.categoryNameEn;
+  const jobImages = job.images?.length
+    ? job.images
+    : job.image
+      ? [job.image]
+      : [];
 
   const isOpen = job.status?.toLowerCase() === "open";
 
@@ -147,9 +155,9 @@ export default function JobDetailsScreen() {
         {/* ==================================================== */}
 
         <View style={styles.imageContainer}>
-          {job.image ? (
+          {jobImages.length > 0 ? (
             <Image
-              source={{ uri: job.image }}
+              source={{ uri: jobImages[0] }}
               style={styles.jobImage}
               resizeMode="cover"
             />
@@ -169,10 +177,26 @@ export default function JobDetailsScreen() {
             <Text
               style={[styles.statusText, !isOpen && styles.statusTextClosed]}
             >
-              {job.status}
+              {job.status || "—"}
             </Text>
           </View>
         </View>
+
+        {jobImages.length > 1 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.imageGallery}
+          >
+            {jobImages.slice(1).map((image, index) => (
+              <Image
+                key={`${image}-${index}`}
+                source={{ uri: image }}
+                style={styles.galleryImage}
+              />
+            ))}
+          </ScrollView>
+        )}
 
         {/* ==================================================== */}
         {/* MAIN CONTENT */}
@@ -186,7 +210,13 @@ export default function JobDetailsScreen() {
           <View style={styles.categoryBadge}>
             <Ionicons name="briefcase-outline" size={14} color="#FF6B35" />
 
-            <Text style={styles.categoryText}>{job.category}</Text>
+            <Text style={styles.categoryText}>
+              {categoryName ||
+                (typeof job.category === "string"
+                  ? job.category
+                  : job.category?.nameEn) ||
+                "General"}
+            </Text>
           </View>
 
           {/* ================================================== */}
@@ -203,27 +233,13 @@ export default function JobDetailsScreen() {
             <Ionicons name="location-outline" size={21} color="#FF6B35" />
 
             <View style={styles.locationContent}>
-              <Text style={styles.locationCity}>{job.location?.city}</Text>
+              <Text style={styles.locationCity}>
+                {job.location?.city || job.city || "—"}
+              </Text>
 
               <Text style={styles.locationDistrict}>
-                {job.location?.district}
+                {job.location?.district || job.district || "—"}
               </Text>
-            </View>
-          </View>
-
-          {/* ================================================== */}
-          {/* BUDGET */}
-          {/* ================================================== */}
-
-          <View style={styles.budgetCard}>
-            <View style={styles.budgetIcon}>
-              <Ionicons name="cash-outline" size={24} color="#FF6B35" />
-            </View>
-
-            <View style={styles.budgetContent}>
-              <Text style={styles.budgetLabel}>Estimated Budget</Text>
-
-              <Text style={styles.budgetValue}>{formattedBudget}</Text>
             </View>
           </View>
 
@@ -253,7 +269,9 @@ export default function JobDetailsScreen() {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>District</Text>
 
-                  <Text style={styles.infoValue}>{job.location?.district}</Text>
+                  <Text style={styles.infoValue}>
+                    {job.location?.district || job.district || "—"}
+                  </Text>
                 </View>
               </View>
 
@@ -267,8 +285,29 @@ export default function JobDetailsScreen() {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>City</Text>
 
-                  <Text style={styles.infoValue}>{job.location?.city}</Text>
+                  <Text style={styles.infoValue}>
+                    {job.location?.city || job.city || "—"}
+                  </Text>
                 </View>
+
+                {job.venue && (
+                  <>
+                    <View style={styles.divider} />
+                    <View style={styles.infoRow}>
+                      <View style={styles.infoIcon}>
+                        <Ionicons
+                          name="navigate-circle-outline"
+                          size={20}
+                          color="#FF6B35"
+                        />
+                      </View>
+                      <View style={styles.infoContent}>
+                        <Text style={styles.infoLabel}>Venue</Text>
+                        <Text style={styles.infoValue}>{job.venue}</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           </View>
@@ -297,7 +336,19 @@ export default function JobDetailsScreen() {
 
               <View style={styles.divider} />
 
-              {/* Category */}
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons name="time-outline" size={20} color="#FF6B35" />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Last Updated</Text>
+                  <Text style={styles.infoValue}>
+                    {formatDate(job.updatedAt)}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.divider} />
 
               <View style={styles.infoRow}>
                 <View style={styles.infoIcon}>
@@ -307,7 +358,29 @@ export default function JobDetailsScreen() {
                 <View style={styles.infoContent}>
                   <Text style={styles.infoLabel}>Category</Text>
 
-                  <Text style={styles.infoValue}>{job.category}</Text>
+                  <Text style={styles.infoValue}>
+                    {categoryName ||
+                      (typeof job.category === "string"
+                        ? job.category
+                        : job.category?.nameEn) ||
+                      "General"}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcon}>
+                  <Ionicons
+                    name="calendar-clear-outline"
+                    size={20}
+                    color="#FF6B35"
+                  />
+                </View>
+                <View style={styles.infoContent}>
+                  <Text style={styles.infoLabel}>Preferred Date</Text>
+                  <Text style={styles.infoValue}>{preferredDate}</Text>
                 </View>
               </View>
 
@@ -328,12 +401,61 @@ export default function JobDetailsScreen() {
                   <Text style={styles.infoLabel}>Status</Text>
 
                   <Text style={[styles.infoValue, isOpen && styles.openStatus]}>
-                    {job.status}
+                    {job.status || "—"}
                   </Text>
                 </View>
               </View>
             </View>
           </View>
+
+          {job.rejectionReason && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Review Note</Text>
+              <View style={styles.infoCard}>
+                <Text style={styles.description}>{job.rejectionReason}</Text>
+              </View>
+            </View>
+          )}
+
+          {(job.approvedAt || job.approvedBy) && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Approval</Text>
+              <View style={styles.infoCard}>
+                {job.approvedAt && (
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIcon}>
+                      <Ionicons
+                        name="checkmark-circle-outline"
+                        size={20}
+                        color="#22C55E"
+                      />
+                    </View>
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Approved On</Text>
+                      <Text style={styles.infoValue}>
+                        {formatDate(job.approvedAt)}
+                      </Text>
+                    </View>
+                  </View>
+                )}
+                {job.approvedBy && (
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIcon}>
+                      <Ionicons
+                        name="person-circle-outline"
+                        size={20}
+                        color="#FF6B35"
+                      />
+                    </View>
+                    <View style={styles.infoContent}>
+                      <Text style={styles.infoLabel}>Approved By</Text>
+                      <Text style={styles.infoValue}>{job.approvedBy}</Text>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
 
           {/* ================================================== */}
           {/* CLIENT */}
@@ -344,13 +466,25 @@ export default function JobDetailsScreen() {
 
             <TouchableOpacity style={styles.clientCard} activeOpacity={0.8}>
               <View style={styles.clientAvatar}>
-                <Ionicons name="person" size={26} color="#FF6B35" />
+                {job.customer?.avatarPath ? (
+                  <Image
+                    source={{ uri: job.customer.avatarPath }}
+                    style={styles.customerAvatarImage}
+                  />
+                ) : (
+                  <Ionicons name="person" size={26} color="#FF6B35" />
+                )}
               </View>
 
               <View style={styles.clientInfo}>
-                <Text style={styles.clientName}>Customer</Text>
+                <Text style={styles.clientName}>
+                  {job.customer?.name || "Customer"}
+                </Text>
 
-                <Text style={styles.clientId}>Client ID: {job.clientId}</Text>
+                <Text style={styles.clientId}>
+                  Customer ID:{" "}
+                  {job.customer?.id || job.customerId || job.clientId || "—"}
+                </Text>
               </View>
 
               <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
@@ -363,7 +497,7 @@ export default function JobDetailsScreen() {
       {/* BOTTOM ACTION */}
       {/* ====================================================== */}
 
-      {isOpen && (
+      {isOpen && isWorkerViewer && (
         <View style={styles.bottomContainer}>
           <TouchableOpacity
             style={styles.applyButton}
@@ -378,14 +512,6 @@ export default function JobDetailsScreen() {
 
             <Text style={styles.applyButtonText}>Apply for This Job</Text>
           </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Optional fetching indicator */}
-
-      {isFetching && !isLoading && (
-        <View style={styles.fetchingIndicator}>
-          <ActivityIndicator size="small" color="#FF6B35" />
         </View>
       )}
     </View>
@@ -484,6 +610,19 @@ const styles = StyleSheet.create({
     height: 240,
     backgroundColor: "#E5E7EB",
     position: "relative",
+  },
+
+  imageGallery: {
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+
+  galleryImage: {
+    width: 112,
+    height: 88,
+    borderRadius: 10,
+    backgroundColor: "#E5E7EB",
   },
 
   jobImage: {
@@ -734,6 +873,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "#FFF5F0",
+  },
+
+  customerAvatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 24,
   },
 
   clientInfo: {

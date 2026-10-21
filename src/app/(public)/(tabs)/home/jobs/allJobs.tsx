@@ -1,6 +1,7 @@
 import JobCard from "@/components/Jobs/JobCard";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -18,10 +19,11 @@ import {
   selectAllJobsLoading,
 } from "@/app/store/home/homeSelector";
 import type { HomeJob } from "@/app/store/home/homeServices";
-import { fetchAllJobs } from "@/app/store/home/homeThunk";
+import { fetchAllJobs, fetchJobById } from "@/app/store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 
 export default function AllJobsScreen() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const { t } = useTranslation();
   const jobs = useAppSelector(selectAllJobs);
@@ -40,6 +42,14 @@ export default function AllJobsScreen() {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleJobPress = (jobId: string) => {
+    void dispatch(fetchJobById(jobId));
+    router.push({
+      pathname: "/(public)/(tabs)/home/jobs/[jobId]",
+      params: { jobId },
+    });
   };
 
   const renderEmptyState = () => {
@@ -89,7 +99,9 @@ export default function AllJobsScreen() {
           styles.listContent,
           jobs.length === 0 && styles.emptyListContent,
         ]}
-        renderItem={({ item }: { item: HomeJob }) => <JobCard job={item} />}
+        renderItem={({ item }: { item: HomeJob }) => (
+          <JobCard job={item} onPress={() => handleJobPress(item.id)} />
+        )}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={refreshJobs} />
         }

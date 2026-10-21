@@ -21,7 +21,11 @@ import { Button, Chip } from "react-native-paper";
 import { selectApiAuthUser } from "../../../store/auth/authSelector";
 import { selectHomeState } from "../../../store/home/homeSelector";
 import { HomeCategory, HomeWorker } from "../../../store/home/homeServices";
-import { fetchHomeData } from "../../../store/home/homeThunk";
+import {
+  fetchHomeData,
+  fetchJobById,
+  fetchWorkerById,
+} from "../../../store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "../../../store/hooks";
 import { selectCurrentUser } from "../../../store/profile/profileSelector";
 import { fetchCurrentProfile } from "../../../store/profile/profileThunk";
@@ -189,6 +193,22 @@ export default function PublicHomeScreen() {
     setSelectedDistrict("All Districts");
     setSelectedCategory("All");
     setSearchQuery("");
+  };
+
+  const handleWorkerPress = (workerId: string) => {
+    void dispatch(fetchWorkerById(workerId));
+    router.push({
+      pathname: "/(public)/(tabs)/home/workers/[workerId]",
+      params: { workerId },
+    });
+  };
+
+  const handleJobPress = (jobId: string) => {
+    void dispatch(fetchJobById(jobId));
+    router.push({
+      pathname: "/(public)/(tabs)/home/jobs/[jobId]",
+      params: { jobId },
+    });
   };
 
   // ==========================================================
@@ -455,12 +475,7 @@ export default function PublicHomeScreen() {
               <HomeWorkerTile
                 key={worker.id}
                 worker={worker}
-                onPress={() =>
-                  router.push({
-                    pathname: "/(public)/(tabs)/home/workers/[workerId]",
-                    params: { workerId: worker.id },
-                  })
-                }
+                onPress={() => handleWorkerPress(worker.id)}
               />
             ))}
           </ScrollView>
@@ -491,7 +506,7 @@ export default function PublicHomeScreen() {
               : t("home.recentJobs")}
           </Text>
           <TouchableOpacity
-            onPress={() => router.push("/(public)/(tabs)/home/jobs/all")}
+            onPress={() => router.push("/(public)/(tabs)/home/jobs/allJobs")}
           >
             <Text style={styles.seeAll}>See All</Text>
           </TouchableOpacity>
@@ -500,7 +515,13 @@ export default function PublicHomeScreen() {
         {filteredJobs.length > 0 ? (
           filteredJobs
             .slice(0, 5)
-            .map((job) => <JobCard key={job.id} job={job} />)
+            .map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onPress={() => handleJobPress(job.id)}
+              />
+            ))
         ) : (
           <View style={styles.emptyState}>
             <Ionicons name="briefcase-outline" size={48} color="#D1D5DB" />

@@ -1,13 +1,15 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
+import { getSavedSessionToken } from "../profile/profileServices";
 import {
   getAllJobs,
   getAllWorkers,
   getHomeData,
+  getJobById,
+  getWorkerById,
   HomeData,
   HomeJob,
   HomeWorker,
 } from "./homeServices";
-import { getSavedSessionToken } from "../profile/profileServices";
 
 type ApiAuthState = {
   apiAuth?: {
@@ -68,6 +70,38 @@ export const fetchAllJobs = createAsyncThunk<
   } catch (error) {
     return rejectWithValue(
       error instanceof Error ? error.message : "Unable to load jobs",
+    );
+  }
+});
+
+export const fetchWorkerById = createAsyncThunk<
+  { id: string; worker: HomeWorker },
+  string,
+  { rejectValue: string }
+>("home/fetchWorkerById", async (workerId, { getState, rejectWithValue }) => {
+  try {
+    const token = await requireToken(getState);
+    const worker = await getWorkerById(token, workerId);
+    return { id: workerId, worker };
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Unable to load worker details",
+    );
+  }
+});
+
+export const fetchJobById = createAsyncThunk<
+  { id: string; job: HomeJob },
+  string,
+  { rejectValue: string }
+>("home/fetchJobById", async (jobId, { getState, rejectWithValue }) => {
+  try {
+    const token = await requireToken(getState);
+    const job = await getJobById(token, jobId);
+    return { id: jobId, job };
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Unable to load job details",
     );
   }
 });

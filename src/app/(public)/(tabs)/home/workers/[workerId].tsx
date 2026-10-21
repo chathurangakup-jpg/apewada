@@ -1,8 +1,17 @@
 // app/(public)/worker/[id].tsx
+import {
+  selectWorkerById,
+  selectWorkerDetailsError,
+  selectWorkerDetailsLoading,
+} from "@/app/store/home/homeSelector";
+import { fetchWorkerById } from "@/app/store/home/homeThunk";
+import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
+import { selectApiAuthUser } from "@/app/store/auth/authSelector";
+import { selectCurrentUser } from "@/app/store/profile/profileSelector";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
@@ -16,22 +25,36 @@ import {
   View,
 } from "react-native";
 import { Card, Chip, Divider } from "react-native-paper";
-import { useGetWorkerByIdQuery } from "../../../../store/workers/workerApi";
 
 export default function WorkerDetailsScreen() {
   const router = useRouter();
-  const { workerId } = useLocalSearchParams<{ workerId: string }>();
-
-  const {
-    data: worker,
-    isLoading,
-    error,
-    refetch,
-  } = useGetWorkerByIdQuery(workerId as string);
-
+  const params = useLocalSearchParams<{ workerId: string | string[] }>();
+  const workerId = Array.isArray(params.workerId)
+    ? params.workerId[0]
+    : params.workerId;
+  const dispatch = useAppDispatch();
+  const worker = useAppSelector((state) =>
+    workerId ? selectWorkerById(state, workerId) : null,
+  );
+  const isLoading = useAppSelector((state) =>
+    workerId ? selectWorkerDetailsLoading(state, workerId) : false,
+  );
+  const error = useAppSelector((state) =>
+    workerId ? selectWorkerDetailsError(state, workerId) : null,
+  );
+  const apiAuthUser = useAppSelector(selectApiAuthUser);
+  const profileUser = useAppSelector(selectCurrentUser);
+  const isWorkerViewer =
+    (profileUser ?? apiAuthUser)?.role.toUpperCase() === "WORKER";
   const { t } = useTranslation();
 
   const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    if (workerId && !worker && !isLoading && !error) {
+      void dispatch(fetchWorkerById(workerId));
+    }
+  }, [dispatch, error, isLoading, worker, workerId]);
 
   if (isLoading) {
     return (
@@ -46,8 +69,15 @@ export default function WorkerDetailsScreen() {
     return (
       <View style={styles.errorContainer}>
         <Ionicons name="alert-circle-outline" size={64} color="#EF4444" />
-        <Text style={styles.errorText}>{t("worker.failed")}</Text>
-        <TouchableOpacity style={styles.retryButton} onPress={() => refetch()}>
+        <Text style={styles.errorText}>{error || t("worker.failed")}</Text>
+        <TouchableOpacity
+          style={styles.retryButton}
+          onPress={() => {
+            if (workerId) {
+              void dispatch(fetchWorkerById(workerId));
+            }
+          }}
+        >
           <Text style={styles.retryButtonText}>{t("worker.retry")}</Text>
         </TouchableOpacity>
       </View>
@@ -70,6 +100,10 @@ export default function WorkerDetailsScreen() {
     router.push(`/(public)/hire/${worker.id}`);
   };
 
+  const workerServices = worker.services ?? [];
+  const workerExperiences = worker.experiences ?? [];
+  const workerEducation = worker.education ?? [];
+  const workerPortfolio = worker.portfolio ?? [];
   const toggleDescription = () => {
     setIsExpanded(!isExpanded);
   };
@@ -83,13 +117,16 @@ export default function WorkerDetailsScreen() {
       <View style={styles.profileCard}>
         <Image
           source={{
-            uri: worker.user?.avatar || "https://i.pravatar.cc/200",
+            uri:
+              worker.user?.avatar ||
+              worker.avatarPath ||
+              "https://i.pravatar.cc/200",
           }}
           style={styles.avatar}
         />
 
         <View style={styles.nameContainer}>
-          <Text style={styles.name}>{worker.user?.name}</Text>
+          <Text style={styles.name}>{worker.user?.name || worker.name}</Text>
           {worker.verified && (
             <View style={styles.verifiedBadge}>
               <Ionicons name="checkmark-circle" size={20} color="#34C759" />
@@ -113,7 +150,8 @@ export default function WorkerDetailsScreen() {
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={20} color="#FFB800" />
               <Text style={styles.ratingText}>
-                {worker.rating?.toFixed(1) || "0.0"}
+                {worker.rating?.toFixed(1) ||
+                  Number(worker.averageRating || 0).toFixed(1)}
               </Text>
             </View>
             <Text style={styles.statLabel}>{t("worker.rating")}</Text>
@@ -144,26 +182,43 @@ export default function WorkerDetailsScreen() {
           )}
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.callButton} onPress={handleCall}>
-            <Ionicons name="call-outline" size={20} color="#FFFFFF" />
-            <Text style={styles.callButtonText}>{t("worker.call")}</Text>
-          </TouchableOpacity>
+        {!isWorkerViewer && (
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.callButton} onPress={handleCall}>
+              <Ionicons name="call-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.callButtonText}>{t("worker.call")}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.messageButton}
-            onPress={handleMessage}
-          >
-            <Ionicons name="chatbubble-outline" size={20} color="#FF6B35" />
-            <Text style={styles.messageButtonText}>{t("worker.message")}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.messageButton}
+              onPress={handleMessage}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color="#FF6B35" />
+              <Text style={styles.messageButtonText}>{t("worker.message")}</Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity style={styles.hireButton} onPress={handleHire}>
-            <Text style={styles.hireButtonText}>{t("worker.hireNow")}</Text>
-          </TouchableOpacity>
-        </View>
+            <TouchableOpacity style={styles.hireButton} onPress={handleHire}>
+              <Text style={styles.hireButtonText}>{t("worker.hireNow")}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
+
+      <Card style={styles.infoCard}>
+        <Card.Content>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="construct-outline" size={22} color="#FF6B35" />
+            <Text style={styles.sectionTitle}>{t("worker.categories")}</Text>
+          </View>
+          <View style={styles.skillsContainer}>
+            {worker.categories.map((category) => (
+              <Chip key={category.id} style={styles.skillChip}>
+                {category.nameEn}
+              </Chip>
+            ))}
+          </View>
+        </Card.Content>
+      </Card>
 
       {/* About Section */}
       {worker.description && (
@@ -194,8 +249,117 @@ export default function WorkerDetailsScreen() {
         </Card>
       )}
 
+      {workerExperiences.length > 0 && (
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="briefcase-outline" size={22} color="#FF6B35" />
+              <Text style={styles.sectionTitle}>
+                {t("worker.workExperience")}
+              </Text>
+            </View>
+            {workerExperiences.map((experience, index) => (
+              <View key={experience.id}>
+                <View style={styles.serviceItem}>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>
+                      {experience.jobTitle} · {experience.companyName}
+                    </Text>
+                    <Text style={styles.serviceDescription}>
+                      {experience.startDate.slice(0, 10) || "—"} -{" "}
+                      {experience.isCurrent
+                        ? t("worker.present")
+                        : (experience.endDate?.slice(0, 10) ?? "—")}
+                    </Text>
+                    {experience.description && (
+                      <Text style={styles.serviceDescription}>
+                        {experience.description}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {index < workerExperiences.length - 1 && (
+                  <Divider style={styles.serviceDivider} />
+                )}
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
+
+      {(worker.educationSummary || workerEducation.length > 0) && (
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="school-outline" size={22} color="#FF6B35" />
+              <Text style={styles.sectionTitle}>{t("worker.education")}</Text>
+            </View>
+            {worker.educationSummary && (
+              <Text style={styles.description}>
+                {worker.educationSummary}
+              </Text>
+            )}
+            {workerEducation.map((education, index) => (
+              <View key={education.id}>
+                <View style={styles.serviceItem}>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>
+                      {education.qualification}
+                    </Text>
+                    <Text style={styles.serviceDescription}>
+                      {education.institution}
+                    </Text>
+                    {education.description && (
+                      <Text style={styles.serviceDescription}>
+                        {education.description}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {index < workerEducation.length - 1 && (
+                  <Divider style={styles.serviceDivider} />
+                )}
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
+
+      {workerPortfolio.length > 0 && (
+        <Card style={styles.infoCard}>
+          <Card.Content>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="images-outline" size={22} color="#FF6B35" />
+              <Text style={styles.sectionTitle}>{t("worker.portfolio")}</Text>
+            </View>
+            {workerPortfolio.map((item, index) => (
+              <View key={item.id}>
+                <View style={styles.serviceItem}>
+                  <View style={styles.serviceInfo}>
+                    <Text style={styles.serviceName}>{item.title}</Text>
+                    {item.description && (
+                      <Text style={styles.serviceDescription}>
+                        {item.description}
+                      </Text>
+                    )}
+                    {item.completedAt && (
+                      <Text style={styles.serviceDuration}>
+                        {item.completedAt.slice(0, 10)}
+                      </Text>
+                    )}
+                  </View>
+                </View>
+                {index < workerPortfolio.length - 1 && (
+                  <Divider style={styles.serviceDivider} />
+                )}
+              </View>
+            ))}
+          </Card.Content>
+        </Card>
+      )}
+
       {/* Services Section */}
-      {worker.services && worker.services.length > 0 && (
+      {workerServices.length > 0 && (
         <Card style={styles.infoCard}>
           <Card.Content>
             <View style={styles.sectionHeader}>
@@ -203,7 +367,7 @@ export default function WorkerDetailsScreen() {
               <Text style={styles.sectionTitle}>{t("worker.services")}</Text>
             </View>
 
-            {worker.services.map((service: any, index: number) => (
+            {workerServices.map((service, index) => (
               <View key={service.id}>
                 <View style={styles.serviceItem}>
                   <View style={styles.serviceInfo}>
@@ -223,7 +387,7 @@ export default function WorkerDetailsScreen() {
                     <Text style={styles.servicePrice}>Rs. {service.price}</Text>
                   )}
                 </View>
-                {index < worker.services.length - 1 && (
+                {index < workerServices.length - 1 && (
                   <Divider style={styles.serviceDivider} />
                 )}
               </View>

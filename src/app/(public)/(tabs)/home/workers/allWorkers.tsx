@@ -19,7 +19,10 @@ import {
   selectAllWorkersLoading,
 } from "@/app/store/home/homeSelector";
 import type { HomeWorker } from "@/app/store/home/homeServices";
-import { fetchAllWorkers } from "@/app/store/home/homeThunk";
+import {
+  fetchAllWorkers,
+  fetchWorkerById,
+} from "@/app/store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 
 export default function AllWorkersScreen() {
@@ -42,6 +45,14 @@ export default function AllWorkersScreen() {
     } finally {
       setRefreshing(false);
     }
+  };
+
+  const handleWorkerPress = (workerId: string) => {
+    void dispatch(fetchWorkerById(workerId));
+    router.push({
+      pathname: "/(public)/(tabs)/home/workers/[workerId]",
+      params: { workerId },
+    });
   };
 
   const renderEmptyState = () => {
@@ -97,12 +108,7 @@ export default function AllWorkersScreen() {
           <HomeWorkerTile
             worker={item}
             style={styles.workerTile}
-            onPress={() =>
-              router.push({
-                pathname: "/(public)/(tabs)/home/workers/[workerId]",
-                params: { workerId: item.id },
-              })
-            }
+            onPress={() => handleWorkerPress(item.id)}
           />
         )}
         refreshControl={

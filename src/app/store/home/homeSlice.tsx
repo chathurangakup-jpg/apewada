@@ -1,10 +1,22 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { HomeData, HomeJob, HomeWorker } from "./homeServices";
-import { fetchAllJobs, fetchAllWorkers, fetchHomeData } from "./homeThunk";
+import {
+  fetchAllJobs,
+  fetchAllWorkers,
+  fetchHomeData,
+  fetchJobById,
+  fetchWorkerById,
+} from "./homeThunk";
 
 interface HomeState extends HomeData {
   allWorkers: HomeWorker[];
   allJobs: HomeJob[];
+  workersById: Record<string, HomeWorker | undefined>;
+  jobsById: Record<string, HomeJob | undefined>;
+  workerDetailsLoading: Record<string, boolean | undefined>;
+  jobDetailsLoading: Record<string, boolean | undefined>;
+  workerDetailsError: Record<string, string | undefined>;
+  jobDetailsError: Record<string, string | undefined>;
   isLoading: boolean;
   isLoadingAllWorkers: boolean;
   isLoadingAllJobs: boolean;
@@ -19,6 +31,12 @@ const initialState: HomeState = {
   recentJobs: [],
   allWorkers: [],
   allJobs: [],
+  workersById: {},
+  jobsById: {},
+  workerDetailsLoading: {},
+  jobDetailsLoading: {},
+  workerDetailsError: {},
+  jobDetailsError: {},
   isLoading: false,
   isLoadingAllWorkers: false,
   isLoadingAllJobs: false,
@@ -72,6 +90,32 @@ const homeSlice = createSlice({
       .addCase(fetchAllJobs.rejected, (state, action) => {
         state.isLoadingAllJobs = false;
         state.allJobsError =
+          action.payload ?? action.error.message ?? "Request failed";
+      })
+      .addCase(fetchWorkerById.pending, (state, action) => {
+        state.workerDetailsLoading[action.meta.arg] = true;
+        delete state.workerDetailsError[action.meta.arg];
+      })
+      .addCase(fetchWorkerById.fulfilled, (state, action) => {
+        state.workerDetailsLoading[action.payload.id] = false;
+        state.workersById[action.payload.id] = action.payload.worker;
+      })
+      .addCase(fetchWorkerById.rejected, (state, action) => {
+        state.workerDetailsLoading[action.meta.arg] = false;
+        state.workerDetailsError[action.meta.arg] =
+          action.payload ?? action.error.message ?? "Request failed";
+      })
+      .addCase(fetchJobById.pending, (state, action) => {
+        state.jobDetailsLoading[action.meta.arg] = true;
+        delete state.jobDetailsError[action.meta.arg];
+      })
+      .addCase(fetchJobById.fulfilled, (state, action) => {
+        state.jobDetailsLoading[action.payload.id] = false;
+        state.jobsById[action.payload.id] = action.payload.job;
+      })
+      .addCase(fetchJobById.rejected, (state, action) => {
+        state.jobDetailsLoading[action.meta.arg] = false;
+        state.jobDetailsError[action.meta.arg] =
           action.payload ?? action.error.message ?? "Request failed";
       });
   },
