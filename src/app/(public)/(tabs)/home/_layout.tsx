@@ -4,6 +4,7 @@ export default function HomeLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
       <Stack.Screen name="home" />
+      <Stack.Screen name="create-job" />
       <Stack.Screen name="workers" />
       <Stack.Screen name="workers/all" />
       <Stack.Screen name="jobs/all" />

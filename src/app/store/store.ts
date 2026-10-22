@@ -2,6 +2,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import apiAuthReducer from "./auth/authSlice";
+import customerReducer from "./customer/customerSlice";
 import homeReducer from "./home/homeSlice";
 import { jobApi } from "./jobs/jobApi";
 import profileReducer from "./profile/profileSlice";
@@ -11,6 +12,7 @@ import { workerApi } from "./workers/workerApi";
 export const store = configureStore({
   reducer: {
     apiAuth: apiAuthReducer,
+    customer: customerReducer,
     home: homeReducer,
     profile: profileReducer,
     auth: authReducer,

@@ -35,6 +35,13 @@
       ],
       "expo-localization",
       "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow ApeWeda to access your photos so you can add images to a job.",
+          "microphonePermission": false
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

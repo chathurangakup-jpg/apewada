@@ -10,6 +10,15 @@ interface JobCardProps {
 
 export default function JobCard({ job, onPress }: JobCardProps) {
   const router = useRouter();
+  const imageUrl =
+    job.image ||
+    job.coverImage ||
+    (typeof job.images?.[0] === "string" ? job.images[0] : undefined) ||
+    "https://images.unsplash.com/photo-1503387762-592deb58ef4e";
+  const category =
+    job.categoryNameEn ||
+    (typeof job.category === "string" ? job.category : job.category?.nameEn) ||
+    "General";
 
   const handlePress = () => {
     if (onPress) {
@@ -34,11 +43,7 @@ export default function JobCard({ job, onPress }: JobCardProps) {
           {/* LEFT - IMAGE */}
           <Image
             source={{
-              uri:
-                job.image ||
-                job.coverImage ||
-                job.images?.[0] ||
-                "https://images.unsplash.com/photo-1503387762-592deb58ef4e",
+              uri: imageUrl,
             }}
             style={styles.image}
           />
@@ -46,13 +51,15 @@ export default function JobCard({ job, onPress }: JobCardProps) {
           {/* RIGHT - DETAILS */}
           <View style={styles.details}>
             {/* Category */}
-            <Chip
-              mode="outlined"
-              style={styles.categoryChip}
-              textStyle={styles.categoryText}
-            >
-              {job.category || "General"}
-            </Chip>
+            <View>
+              <Chip
+                mode="outlined"
+                style={styles.categoryChip}
+                textStyle={styles.categoryText}
+              >
+                {category}
+              </Chip>
+            </View>
 
             {/* Title */}
             <Text style={styles.title} numberOfLines={2}>

@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { Button, Chip } from "react-native-paper";
 import { selectApiAuthUser } from "../../../store/auth/authSelector";
+import { selectCustomerPostedJobs } from "../../../store/customer/customerSelector";
 import { selectHomeState } from "../../../store/home/homeSelector";
 import { HomeCategory, HomeWorker } from "../../../store/home/homeServices";
 import {
@@ -46,9 +47,11 @@ export default function PublicHomeScreen() {
     useAppSelector(selectHomeState);
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const profileUser = useAppSelector(selectCurrentUser);
+  const customerPostedJobs = useAppSelector(selectCustomerPostedJobs);
   const isAuthenticated = Boolean(apiAuthUser || profileUser);
   const authenticatedUser = profileUser ?? apiAuthUser;
   const authenticatedUserRole = authenticatedUser?.role.toUpperCase();
+  const isCustomer = authenticatedUserRole === "CUSTOMER";
   const authenticatedUserRoleLabel =
     authenticatedUserRole === "WORKER"
       ? t("home.workerRole")
@@ -126,9 +129,19 @@ export default function PublicHomeScreen() {
   // REFRESH HANDLER
   // ==========================================================
 
+  const visibleRecentJobs = useMemo(() => {
+    const publicJobs = recentJobs.filter(
+      (job) =>
+        job.status !== "PENDING_APPROVAL" ||
+        job.customerId === authenticatedUser?.id,
+    );
+
+    return isCustomer ? [...customerPostedJobs, ...publicJobs] : publicJobs;
+  }, [authenticatedUser?.id, customerPostedJobs, isCustomer, recentJobs]);
+
   const filteredJobs = useMemo(
     () =>
-      recentJobs.filter((job: any) => {
+      visibleRecentJobs.filter((job: any) => {
         // API returns flat fields: categorySlug, categoryNameEn, district, city
         const jobCategorySlug =
           job.categorySlug ??
@@ -163,7 +176,7 @@ export default function PublicHomeScreen() {
 
         return matchesCategory && matchesDistrict && matchesSearch;
       }),
-    [recentJobs, selectedCategory, selectedDistrict, searchQuery],
+    [visibleRecentJobs, selectedCategory, selectedDistrict, searchQuery],
   );
 
   const onRefresh = async () => {
@@ -329,6 +342,17 @@ export default function PublicHomeScreen() {
                   </Text>
                 )}
               </View>
+              {isCustomer && (
+                <TouchableOpacity
+                  style={styles.createJobButton}
+                  onPress={() =>
+                    router.push("/(public)/(tabs)/home/create-job")
+                  }
+                >
+                  <Ionicons name="add-circle-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.createJobButtonText}>Create a Job</Text>
+                </TouchableOpacity>
+              )}
             </View>
             <Text style={styles.welcomeDescription}>
               {t("home.welcomeIntro")}
@@ -362,7 +386,9 @@ export default function PublicHomeScreen() {
           {!isAuthenticated && (
             <Button
               mode="outlined"
-              onPress={() => router.push("/(public)/workers")}
+              onPress={() =>
+                router.push("/(public)/(tabs)/home/workers/allWorkers")
+              }
               style={styles.secondaryButton}
               labelStyle={styles.secondaryButtonLabel}
             >
@@ -515,11 +541,25 @@ export default function PublicHomeScreen() {
         {filteredJobs.length > 0 ? (
           filteredJobs
             .slice(0, 5)
-            .map((job) => (
+            .map((job: any) => (
               <JobCard
                 key={job.id}
                 job={job}
-                onPress={() => handleJobPress(job.id)}
+                onPress={() => {
+                  if (
+                    isCustomer &&
+                    job.status === "PENDING_APPROVAL" &&
+                    job.customerId === authenticatedUser?.id
+                  ) {
+                    router.push({
+                      pathname: "/(public)/(tabs)/home/create-job",
+                      params: { jobId: job.id },
+                    });
+                    return;
+                  }
+
+                  handleJobPress(job.id);
+                }}
               />
             ))
         ) : (
@@ -571,6 +611,19 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
+  },
+
+  loadingContainer: {
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    flex: 1,
+    justifyContent: "center",
+  },
+
+  loadingText: {
+    color: "#6B7280",
+    fontSize: 14,
+    marginTop: 12,
   },
 
   filterSection: {
@@ -636,6 +689,22 @@ const styles = StyleSheet.create({
 
   welcomeUserDetails: {
     flex: 1,
+  },
+
+  createJobButton: {
+    alignItems: "center",
+    backgroundColor: "#FF6B35",
+    borderRadius: 8,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+
+  createJobButtonText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "600",
   },
 
   welcomeTitle: {
