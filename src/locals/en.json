@@ -66,7 +66,8 @@
     "noCategoryJobs": "No {{category}} jobs available",
     "noJobsInDistrict": "No jobs in {{district}}",
     "noJobsAvailable": "No jobs available right now",
-    "clearAllFilters": "Clear all filters"
+    "clearAllFilters": "Clear all filters",
+    "messageCustomer": "Message Customer"
   },
   "worker": {
     "loading": "Loading worker details...",
@@ -170,10 +171,28 @@
     "home": "Home",
     "wallet": "Wallet",
     "history": "History",
+    "chat": "Chat",
     "profile": "Profile",
     "myJobs": "My Jobs",
     "reviews": "Reviews",
     "dashboard": "Dashboard"
+  },
+  "chat": {
+    "title": "Chat",
+    "conversations": "Conversations",
+    "loading": "Loading conversation...",
+    "noConversationTitle": "No conversation selected",
+    "noConversationText": "Open a worker profile or an eligible job to start a conversation.",
+    "noConversations": "No conversations yet",
+    "unknownParticipant": "Unknown participant",
+    "noMessages": "No messages yet. Send the first message.",
+    "placeholder": "Write a message...",
+    "send": "Send message",
+    "retry": "Try again",
+    "sessionExpired": "Your session has expired. Please sign in again.",
+    "realtimeFailed": "Unable to connect to real-time chat.",
+    "loadFailed": "Unable to load this conversation.",
+    "sendFailed": "Unable to send your message."
   },
   "language": {
     "description": "Select your preferred language to continue using the app in your native language.",

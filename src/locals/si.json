@@ -66,7 +66,8 @@
     "noCategoryJobs": "{{category}} රැකියා නොමැත",
     "noJobsInDistrict": "{{district}} හි රැකියා නොමැත",
     "noJobsAvailable": "දැනට රැකියා නොමැත",
-    "clearAllFilters": "සියලු පෙරහන් පැහැදිලි කරන්න"
+    "clearAllFilters": "සියලු පෙරහන් පැහැදිලි කරන්න",
+    "messageCustomer": "පාරිභෝගිකයාට පණිවිඩයක් යවන්න"
   },
   "worker": {
     "loading": "වැඩකරු විස්තර පූරණය වෙමින්...",
@@ -170,10 +171,28 @@
     "home": "මුල් පිටුව",
     "wallet": "මුදල්",
     "history": " ඉතිහාසය",
+    "chat": "චැට්",
     "profile": "පැතිකඩ",
     "myJobs": "මගේ රැකියා",
     "reviews": "සමාලෝචන",
     "dashboard": "ඩෑෂ්බෝර්ඩ්"
+  },
+  "chat": {
+    "title": "චැට්",
+    "conversations": "සංවාද",
+    "loading": "සංවාදය පූරණය වෙමින්...",
+    "noConversationTitle": "සංවාදයක් තෝරා නැත",
+    "noConversationText": "සංවාදයක් ආරම්භ කිරීමට වැඩකරු පැතිකඩක් හෝ සුදුසු රැකියාවක් විවෘත කරන්න.",
+    "noConversations": "තවමත් සංවාද නැත",
+    "unknownParticipant": "හඳුනා නොගත් සහභාගිකයා",
+    "noMessages": "තවමත් පණිවිඩ නැත. පළමු පණිවිඩය යවන්න.",
+    "placeholder": "පණිවිඩයක් ලියන්න...",
+    "send": "පණිවිඩය යවන්න",
+    "retry": "නැවත උත්සාහ කරන්න",
+    "sessionExpired": "ඔබගේ සැසිය කල් ඉකුත් වී ඇත. නැවත පිවිසෙන්න.",
+    "realtimeFailed": "සජීවී චැට් සම්බන්ධතාවයට එක්වීමට නොහැකි විය.",
+    "loadFailed": "මෙම සංවාදය පූරණය කළ නොහැක.",
+    "sendFailed": "ඔබගේ පණිවිඩය යැවීමට නොහැකි විය."
   },
   "language": {
     "description": "ඔබේ මව්භාෂාවෙන් යෙදුම භාවිතා කිරීමට කැමති භාෂාව තෝරන්න.",

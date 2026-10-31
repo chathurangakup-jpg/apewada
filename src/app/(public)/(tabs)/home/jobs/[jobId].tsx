@@ -10,11 +10,12 @@ import { selectCurrentUser } from "@/app/store/profile/profileSelector";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   Image,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -47,6 +48,7 @@ export default function JobDetailsScreen() {
   const profileUser = useAppSelector(selectCurrentUser);
   const isWorkerViewer =
     (profileUser ?? apiAuthUser)?.role.toUpperCase() === "WORKER";
+  const [isCustomerModalVisible, setIsCustomerModalVisible] = useState(false);
 
   useEffect(() => {
     if (jobId && !job && !isLoading && !error) {
@@ -129,6 +131,26 @@ export default function JobDetailsScreen() {
       : [];
 
   const isOpen = job.status?.toLowerCase() === "open";
+  const customerId = job.customer?.id || job.customerId || job.clientId;
+
+  const handleShowCustomerDetails = () => {
+    setIsCustomerModalVisible(true);
+  };
+
+  const handleMessageCustomer = () => {
+    if (!customerId) {
+      return;
+    }
+
+    router.push({
+      pathname: "/(public)/(tabs)/chat",
+      params: {
+        participantId: customerId,
+        participantName: job.customer?.name || "Customer",
+        jobId: job.id,
+      },
+    });
+  };
 
   // ============================================================
   // UI
@@ -464,7 +486,11 @@ export default function JobDetailsScreen() {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Posted By</Text>
 
-            <TouchableOpacity style={styles.clientCard} activeOpacity={0.8}>
+            <TouchableOpacity
+              style={styles.clientCard}
+              activeOpacity={0.8}
+              onPress={handleShowCustomerDetails}
+            >
               <View style={styles.clientAvatar}>
                 {job.customer?.avatarPath ? (
                   <Image
@@ -493,12 +519,78 @@ export default function JobDetailsScreen() {
         </View>
       </ScrollView>
 
+      <Modal
+        transparent
+        animationType="slide"
+        visible={isCustomerModalVisible}
+        onRequestClose={() => setIsCustomerModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Customer Details</Text>
+              <TouchableOpacity
+                accessibilityLabel="Close customer details"
+                onPress={() => setIsCustomerModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#374151" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.customerDetails}>
+              <Text style={styles.customerDetailName}>
+                {job.customer?.name || "Customer"}
+              </Text>
+              <Text style={styles.customerDetailLabel}>Customer ID</Text>
+              <Text style={styles.customerDetailValue}>{customerId || "—"}</Text>
+              <View style={styles.modalDivider} />
+              <Text style={styles.customerDetailLabel}>Email</Text>
+              <Text style={styles.customerDetailValue}>
+                {job.customer?.email || "Not provided"}
+              </Text>
+              <Text style={styles.customerDetailLabel}>Phone</Text>
+              <Text style={styles.customerDetailValue}>
+                {job.customer?.phone || "Not provided"}
+              </Text>
+              <Text style={styles.customerDetailLabel}>Address</Text>
+              <Text style={styles.customerDetailValue}>
+                {job.customer?.address || "Not provided"}
+              </Text>
+              <Text style={styles.customerDetailLabel}>District</Text>
+              <Text style={styles.customerDetailValue}>
+                {job.customer?.district || "Not provided"}
+              </Text>
+              <Text style={styles.customerDetailLabel}>City</Text>
+              <Text style={styles.customerDetailValue}>
+                {job.customer?.city || "Not provided"}
+              </Text>
+              <Text style={styles.customerDetailLabel}>Venue</Text>
+              <Text style={styles.customerDetailValue}>
+                {job.customer?.venue || "Not provided"}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ====================================================== */}
       {/* BOTTOM ACTION */}
       {/* ====================================================== */}
 
       {isOpen && isWorkerViewer && (
         <View style={styles.bottomContainer}>
+          {customerId && (
+            <TouchableOpacity
+              style={styles.messageCustomerButton}
+              activeOpacity={0.8}
+              onPress={handleMessageCustomer}
+            >
+              <Ionicons name="chatbubble-outline" size={20} color="#FF6B35" />
+              <Text style={styles.messageCustomerButtonText}>
+                {t("jobs.messageCustomer")}
+              </Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.applyButton}
             activeOpacity={0.8}
@@ -898,6 +990,61 @@ const styles = StyleSheet.create({
     color: "#9CA3AF",
   },
 
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(17, 24, 39, 0.45)",
+  },
+
+  modalContent: {
+    minHeight: "65%",
+    maxHeight: "85%",
+    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#111827",
+  },
+
+  customerDetails: {
+    paddingTop: 20,
+  },
+
+  customerDetailName: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#111827",
+  },
+
+  customerDetailLabel: {
+    marginTop: 14,
+    fontSize: 12,
+    color: "#6B7280",
+  },
+
+  customerDetailValue: {
+    marginTop: 4,
+    fontSize: 15,
+    color: "#374151",
+  },
+
+  modalDivider: {
+    height: 1,
+    marginTop: 18,
+    backgroundColor: "#E5E7EB",
+  },
+
   // ==========================================================
   // BOTTOM ACTION
   // ==========================================================
@@ -907,6 +1054,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    flexDirection: "row",
+    gap: 10,
     paddingHorizontal: 16,
     paddingTop: 12,
     paddingBottom: 20,
@@ -916,6 +1065,7 @@ const styles = StyleSheet.create({
   },
 
   applyButton: {
+    flex: 1,
     height: 52,
     flexDirection: "row",
     alignItems: "center",
@@ -923,6 +1073,25 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: "#FF6B35",
     borderRadius: 10,
+  },
+
+  messageCustomerButton: {
+    flex: 1,
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#FF6B35",
+    borderRadius: 10,
+    backgroundColor: "#FFF5F0",
+  },
+
+  messageCustomerButtonText: {
+    color: "#FF6B35",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   applyButtonText: {

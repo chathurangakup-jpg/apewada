@@ -91,8 +91,14 @@ export default function WorkerDetailsScreen() {
   };
 
   const handleMessage = () => {
-    // Navigate to chat screen
-    router.push(`/(chat)/${worker.id}`);
+    const participantId = worker.user?.id ?? worker.id;
+    router.push({
+      pathname: "/(public)/(tabs)/chat",
+      params: {
+        participantId,
+        participantName: worker.user?.name || worker.name,
+      },
+    });
   };
 
   const handleHire = () => {

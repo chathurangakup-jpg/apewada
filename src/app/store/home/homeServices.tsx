@@ -107,6 +107,12 @@ export interface HomeJob {
     id?: string;
     name?: string;
     avatarPath?: string | null;
+    email?: string | null;
+    phone?: string | null;
+    address?: string | null;
+    district?: string | null;
+    city?: string | null;
+    venue?: string | null;
   };
   images?: string[];
   image?: string;
@@ -608,6 +614,12 @@ export async function getJobById(
           id: getString(customer.id),
           name: getString(customer.name) ?? "Customer",
           avatarPath: getString(customer.avatarPath) ?? null,
+          email: getString(customer.email) ?? null,
+          phone: getString(customer.phone) ?? null,
+          address: getString(customer.address) ?? null,
+          district: getString(customer.district, job.district) ?? null,
+          city: getString(customer.city, job.city) ?? null,
+          venue: getString(customer.venue, job.venue) ?? null,
         }
       : undefined,
     clientId: getString(job.customerId, job.clientId),
