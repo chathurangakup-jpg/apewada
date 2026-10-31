@@ -6,6 +6,7 @@ import {
   CustomerJobDraft,
   CustomerJobImageRequest,
   CustomerJobUpload,
+  getCustomerJobs,
   updateCustomerJob,
   uploadJobImages,
 } from "./customerServices";
@@ -49,6 +50,21 @@ interface UpdateCustomerJobPayload extends CreateCustomerJobPayload {
   jobId: string;
   existingImages: CustomerJobImageRequest[];
 }
+
+export const fetchCustomerJobs = createAsyncThunk<
+  CustomerJob[],
+  void,
+  { rejectValue: string }
+>("customer/fetchJobs", async (_, { getState, rejectWithValue }) => {
+  try {
+    const { token } = await getSession(getState);
+    return await getCustomerJobs(token);
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error ? error.message : "Unable to load your jobs",
+    );
+  }
+});
 
 export const submitCustomerJob = createAsyncThunk<
   CustomerJob,

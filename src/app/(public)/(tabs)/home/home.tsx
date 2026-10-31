@@ -357,6 +357,15 @@ export default function PublicHomeScreen() {
             <Text style={styles.welcomeDescription}>
               {t("home.welcomeIntro")}
             </Text>
+            {isCustomer && (
+              <TouchableOpacity
+                style={styles.showMyJobsButton}
+                onPress={() => router.push("/(public)/(tabs)/home/my-jobs")}
+              >
+                <Ionicons name="briefcase-outline" size={17} color="#FF6B35" />
+                <Text style={styles.showMyJobsButtonText}>Show My Jobs</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -725,6 +734,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 19,
     marginTop: 12,
+  },
+
+  showMyJobsButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 12,
+  },
+
+  showMyJobsButtonText: {
+    color: "#FF6B35",
+    fontSize: 13,
+    fontWeight: "700",
   },
 
   heroSection: {

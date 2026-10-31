@@ -9,3 +9,7 @@ export const selectCustomerJobById = (state: RootState, jobId?: string) =>
 export const selectCustomerJobSubmitting = (state: RootState) =>
   state.customer.isSubmitting;
 export const selectCustomerJobError = (state: RootState) => state.customer.error;
+export const selectCustomerJobsLoading = (state: RootState) =>
+  state.customer.isLoadingJobs;
+export const selectCustomerJobsError = (state: RootState) =>
+  state.customer.jobsError;

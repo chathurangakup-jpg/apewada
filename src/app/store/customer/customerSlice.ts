@@ -1,15 +1,23 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { CustomerJob } from "./customerServices";
-import { editCustomerJob, submitCustomerJob } from "./customerThunk";
+import {
+  editCustomerJob,
+  fetchCustomerJobs,
+  submitCustomerJob,
+} from "./customerThunk";
 
 interface CustomerState {
   postedJobs: CustomerJob[];
+  isLoadingJobs: boolean;
+  jobsError: string | null;
   isSubmitting: boolean;
   error: string | null;
 }
 
 const initialState: CustomerState = {
   postedJobs: [],
+  isLoadingJobs: false,
+  jobsError: null,
   isSubmitting: false,
   error: null,
 };
@@ -20,6 +28,19 @@ const customerSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      .addCase(fetchCustomerJobs.pending, (state) => {
+        state.isLoadingJobs = true;
+        state.jobsError = null;
+      })
+      .addCase(fetchCustomerJobs.fulfilled, (state, action) => {
+        state.isLoadingJobs = false;
+        state.postedJobs = action.payload;
+      })
+      .addCase(fetchCustomerJobs.rejected, (state, action) => {
+        state.isLoadingJobs = false;
+        state.jobsError =
+          action.payload ?? action.error.message ?? "Request failed";
+      })
       .addCase(submitCustomerJob.pending, (state) => {
         state.isSubmitting = true;
         state.error = null;

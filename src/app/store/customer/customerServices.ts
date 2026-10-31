@@ -62,6 +62,14 @@ interface CustomerJobResponse {
   };
 }
 
+interface CustomerJobsResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    jobs?: CustomerJob[];
+  };
+}
+
 function fileExtension(filename: string, mimeType: string) {
   const extension = filename.split(".").pop();
   if (extension && /^[a-z0-9]+$/i.test(extension)) {
@@ -163,4 +171,20 @@ export function updateCustomerJob(
     draft,
     images,
   );
+}
+
+export async function getCustomerJobs(token: string): Promise<CustomerJob[]> {
+  const response = await fetch(`${BASE_URL}/api/customer/jobs`, {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const result = (await response.json()) as CustomerJobsResponse;
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.message || "Unable to load your jobs");
+  }
+
+  return result.data?.jobs ?? [];
 }
