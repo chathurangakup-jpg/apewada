@@ -197,9 +197,17 @@ export default function ChatScreen() {
     const handleConversationCreated = (
       payload: SocketConversationCreatedPayload,
     ) => {
-      dispatch(
-        addSocketConversation(normalizeConversation(payload.conversation)),
+      const newConversation = normalizeConversation(
+        payload.conversation,
+        currentUserId,
       );
+      dispatch(
+        addSocketConversation(newConversation),
+      );
+
+      if (!newConversation.participantName) {
+        void dispatch(fetchConversations());
+      }
     };
     const handleConnectError = (connectionError: Error) => {
       dispatch(

@@ -102,8 +102,13 @@ export default function WorkerDetailsScreen() {
   };
 
   const handleHire = () => {
-    // Navigate to hire/booking screen
-    router.push(`/(public)/hire/${worker.id}`);
+    router.push({
+      pathname: "/(public)/(tabs)/bookings",
+      params: {
+        workerId: worker.id,
+        workerName: worker.user?.name || worker.name,
+      },
+    });
   };
 
   const workerServices = worker.services ?? [];

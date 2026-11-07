@@ -17,11 +17,26 @@ type ConversationThunkConfig = {
 type ApiAuthState = {
   apiAuth?: {
     token?: string | null;
+    user?: {
+      id?: string;
+    } | null;
+  };
+  profile?: {
+    data?: {
+      user?: {
+        id?: string;
+      } | null;
+    } | null;
   };
 };
 
 const getTokenFromState = (state: unknown) =>
   (state as ApiAuthState).apiAuth?.token ?? null;
+
+const getCurrentUserIdFromState = (state: unknown) => {
+  const typedState = state as ApiAuthState;
+  return typedState.profile?.data?.user?.id ?? typedState.apiAuth?.user?.id;
+};
 
 async function requireToken(getState: () => unknown): Promise<string> {
   const token = getTokenFromState(getState()) ?? (await getSavedSessionToken());
@@ -46,6 +61,7 @@ export const startConversation = createAsyncThunk<
         token,
         payload.participantId,
         payload.jobId,
+        getCurrentUserIdFromState(getState()),
       );
     } catch (error) {
       return rejectWithValue(
@@ -66,7 +82,10 @@ export const fetchConversations = createAsyncThunk<
   async (_, { getState, rejectWithValue }) => {
     try {
       const token = await requireToken(getState);
-      return await getConversations(token);
+      return await getConversations(
+        token,
+        getCurrentUserIdFromState(getState()),
+      );
     } catch (error) {
       return rejectWithValue(
         error instanceof Error

@@ -83,7 +83,62 @@ export function normalizeConversationMessage(
   return { id, content, senderId, createdAt };
 }
 
-export function normalizeConversation(value: unknown): Conversation {
+interface ConversationParticipant {
+  id?: string;
+  name?: string;
+  avatarPath?: string;
+}
+
+function getConversationParticipant(value: unknown): ConversationParticipant {
+  if (!isRecord(value)) {
+    return {};
+  }
+
+  const user = isRecord(value.user) ? value.user : undefined;
+
+  return {
+    id:
+      getOptionalString(user?.id) ??
+      getOptionalString(value.userId) ??
+      getOptionalString(value.id),
+    name: getOptionalString(value.name) ?? getOptionalString(user?.name),
+    avatarPath:
+      getOptionalString(value.avatarPath) ??
+      getOptionalString(value.avatar) ??
+      getOptionalString(user?.avatarPath) ??
+      getOptionalString(user?.avatar),
+  };
+}
+
+function getCounterpart(
+  value: Record<string, unknown>,
+  currentUserId?: string,
+): ConversationParticipant {
+  const participant = getConversationParticipant(
+    value.participant ?? value.participantUser,
+  );
+  if (participant.name) {
+    return participant;
+  }
+
+  const people = [
+    getConversationParticipant(value.customer),
+    getConversationParticipant(value.worker),
+  ].filter((person) => person.name);
+
+  return (
+    (currentUserId
+      ? people.find((person) => person.id !== currentUserId)
+      : undefined) ??
+    people[0] ??
+    participant
+  );
+}
+
+export function normalizeConversation(
+  value: unknown,
+  currentUserId?: string,
+): Conversation {
   if (!isRecord(value)) {
     throw new Error("The server returned an invalid conversation.");
   }
@@ -97,18 +152,22 @@ export function normalizeConversation(value: unknown): Conversation {
     typeof value.unreadCount === "number" && Number.isFinite(value.unreadCount)
       ? value.unreadCount
       : undefined;
+  const counterpart = getCounterpart(value, currentUserId);
 
   return {
     id,
-    participantId: getOptionalString(value.participantId),
+    participantId: getOptionalString(value.participantId) ?? counterpart.id,
     jobId: getOptionalString(value.jobId) ?? null,
     jobTitle: getOptionalString(value.jobTitle) ?? null,
     customerId: getOptionalString(value.customerId),
     workerId: getOptionalString(value.workerId),
-    participantName: getOptionalString(value.participantName),
+    participantName:
+      getOptionalString(value.participantName) ?? counterpart.name,
     participantRole: getOptionalString(value.participantRole),
     participantAvatarPath:
-      getOptionalString(value.participantAvatarPath) ?? null,
+      getOptionalString(value.participantAvatarPath) ??
+      counterpart.avatarPath ??
+      null,
     createdAt: getOptionalString(value.createdAt),
     updatedAt: getOptionalString(value.updatedAt),
     lastMessage: getMessageContent(value.lastMessage),
@@ -145,6 +204,7 @@ export async function createConversation(
   token: string,
   participantId: string,
   jobId?: string,
+  currentUserId?: string,
 ): Promise<Conversation> {
   const data = await request<CreateConversationData>(
     token,
@@ -156,17 +216,22 @@ export async function createConversation(
     },
   );
 
-  return normalizeConversation(data.conversation);
+  return normalizeConversation(data.conversation, currentUserId);
 }
 
-export async function getConversations(token: string): Promise<Conversation[]> {
+export async function getConversations(
+  token: string,
+  currentUserId?: string,
+): Promise<Conversation[]> {
   const data = await request<ConversationsData>(
     token,
     "/api/conversations",
     "GET",
   );
 
-  return data.conversations.map(normalizeConversation);
+  return data.conversations.map((conversation) =>
+    normalizeConversation(conversation, currentUserId),
+  );
 }
 
 export async function getConversationMessages(
