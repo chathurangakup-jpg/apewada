@@ -1,11 +1,44 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Tabs } from "expo-router";
+import { Redirect, router, Tabs, usePathname } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { selectApiAuthUser } from "../../store/auth/authSelector";
+import { useAppSelector } from "../../store/hooks";
+import { selectCurrentUser } from "../../store/profile/profileSelector";
 
 export default function TabsLayout() {
   const { t } = useTranslation();
+  const pathname = usePathname();
+  const apiAuthUser = useAppSelector(selectApiAuthUser);
+  const profileUser = useAppSelector(selectCurrentUser);
+  const isAuthenticated = Boolean(apiAuthUser || profileUser);
+  const [tabName, homeSection, homeItem] = pathname
+    .split("/")
+    .filter(Boolean);
+  const requiresAuth =
+    ["bookings", "chat", "profile", "wallet", "history"].includes(tabName) ||
+    (tabName === "home" &&
+      (["create-job", "my-jobs"].includes(homeSection) ||
+        (homeSection === "workers" &&
+          homeItem !== undefined &&
+          !["workers", "allWorkers"].includes(homeItem)) ||
+        (homeSection === "jobs" &&
+          homeItem !== undefined &&
+          !["jobs", "allJobs"].includes(homeItem))));
+
+  if (!isAuthenticated && requiresAuth) {
+    return <Redirect href="/(auth)/login" />;
+  }
+
   return (
     <Tabs
+      screenListeners={({ route }) => ({
+        tabPress: (event) => {
+          if (!isAuthenticated && route.name !== "home") {
+            event.preventDefault();
+            router.push("/(auth)/login");
+          }
+        },
+      })}
       screenOptions={{
         headerShown: false,
         tabBarStyle: {

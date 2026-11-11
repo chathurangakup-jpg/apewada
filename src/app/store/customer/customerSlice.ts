@@ -1,26 +1,47 @@
 import { createSlice } from "@reduxjs/toolkit";
+import { Booking } from "../bookings/bookingServices";
+import {
+  cancelExistingBooking,
+  changeBookingStatus,
+  respondBooking,
+  submitBooking,
+  submitBookingReview,
+} from "../bookings/bookingThunk";
 import { CustomerJob } from "./customerServices";
 import {
   editCustomerJob,
+  fetchCustomerBookings,
   fetchCustomerJobs,
   submitCustomerJob,
 } from "./customerThunk";
 
 interface CustomerState {
   postedJobs: CustomerJob[];
+  bookingRequests: Booking[];
   isLoadingJobs: boolean;
+  isLoadingBookings: boolean;
   jobsError: string | null;
+  bookingsError: string | null;
   isSubmitting: boolean;
   error: string | null;
 }
 
 const initialState: CustomerState = {
   postedJobs: [],
+  bookingRequests: [],
   isLoadingJobs: false,
+  isLoadingBookings: false,
   jobsError: null,
+  bookingsError: null,
   isSubmitting: false,
   error: null,
 };
+
+function upsertBookingRequest(bookings: Booking[], booking: Booking) {
+  const index = bookings.findIndex((item) => item.id === booking.id);
+  if (index >= 0) bookings[index] = booking;
+  else bookings.unshift(booking);
+}
 
 const customerSlice = createSlice({
   name: "customer",
@@ -71,6 +92,37 @@ const customerSlice = createSlice({
       .addCase(editCustomerJob.rejected, (state, action) => {
         state.isSubmitting = false;
         state.error = action.payload ?? action.error.message ?? "Request failed";
+      })
+      .addCase(fetchCustomerBookings.pending, (state) => {
+        state.isLoadingBookings = true;
+        state.bookingsError = null;
+        state.bookingRequests = [];
+      })
+      .addCase(fetchCustomerBookings.fulfilled, (state, action) => {
+        state.isLoadingBookings = false;
+        state.bookingRequests = action.payload;
+      })
+      .addCase(fetchCustomerBookings.rejected, (state, action) => {
+        state.isLoadingBookings = false;
+        state.bookingsError =
+          action.payload ??
+          action.error.message ??
+          "Unable to load your booking requests";
+      })
+      .addCase(submitBooking.fulfilled, (state, action) => {
+        upsertBookingRequest(state.bookingRequests, action.payload);
+      })
+      .addCase(respondBooking.fulfilled, (state, action) => {
+        upsertBookingRequest(state.bookingRequests, action.payload);
+      })
+      .addCase(changeBookingStatus.fulfilled, (state, action) => {
+        upsertBookingRequest(state.bookingRequests, action.payload);
+      })
+      .addCase(submitBookingReview.fulfilled, (state, action) => {
+        upsertBookingRequest(state.bookingRequests, action.payload);
+      })
+      .addCase(cancelExistingBooking.fulfilled, (state, action) => {
+        upsertBookingRequest(state.bookingRequests, action.payload);
       });
   },
 });

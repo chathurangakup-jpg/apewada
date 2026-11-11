@@ -34,7 +34,10 @@ export const fetchBookings = createAsyncThunk<
   { rejectValue: string }
 >("bookings/fetch", async (role, { getState, rejectWithValue }) => {
   try {
-    return { role, bookings: await getBookings(await requireToken(getState), role) };
+    return {
+      role,
+      bookings: await getBookings(await requireToken(getState), role),
+    };
   } catch (error) {
     return rejectWithValue(rejectMessage(error, "Unable to load bookings"));
   }
@@ -58,9 +61,12 @@ export const respondBooking = createAsyncThunk<
   { rejectValue: string }
 >("bookings/respond", async (payload, { getState, rejectWithValue }) => {
   try {
+    console.log("Responding to booking with payload:", payload);
     return await respondToBooking(await requireToken(getState), payload);
   } catch (error) {
-    return rejectWithValue(rejectMessage(error, "Unable to respond to booking"));
+    return rejectWithValue(
+      rejectMessage(error, "Unable to respond to booking"),
+    );
   }
 });
 
@@ -92,10 +98,18 @@ export const cancelExistingBooking = createAsyncThunk<
   Booking,
   { role: BookingRole; bookingId: string; reason: string },
   { rejectValue: string }
->("bookings/cancel", async ({ role, bookingId, reason }, { getState, rejectWithValue }) => {
-  try {
-    return await cancelBooking(await requireToken(getState), role, bookingId, reason);
-  } catch (error) {
-    return rejectWithValue(rejectMessage(error, "Unable to cancel booking"));
-  }
-});
+>(
+  "bookings/cancel",
+  async ({ role, bookingId, reason }, { getState, rejectWithValue }) => {
+    try {
+      return await cancelBooking(
+        await requireToken(getState),
+        role,
+        bookingId,
+        reason,
+      );
+    } catch (error) {
+      return rejectWithValue(rejectMessage(error, "Unable to cancel booking"));
+    }
+  },
+);

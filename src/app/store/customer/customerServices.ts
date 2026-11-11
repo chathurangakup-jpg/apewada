@@ -1,4 +1,5 @@
 import { supabase } from "@/supabase";
+import { getBookings } from "../bookings/bookingServices";
 
 const BASE_URL = (
   process.env.EXPO_PUBLIC_API_URL || "https://api.yourdomain.com"
@@ -187,4 +188,8 @@ export async function getCustomerJobs(token: string): Promise<CustomerJob[]> {
   }
 
   return result.data?.jobs ?? [];
+}
+
+export function getCustomerBookings(token: string) {
+  return getBookings(token, "CUSTOMER");
 }

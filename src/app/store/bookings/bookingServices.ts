@@ -5,6 +5,7 @@ export interface BookingPerson {
   name?: string;
   email?: string;
   phone?: string;
+  avatarPath?: string | null;
 }
 
 export interface Booking {
@@ -16,10 +17,14 @@ export interface Booking {
   startTime?: string | null;
   endTime?: string | null;
   status: string;
+  confirmedAt?: string | null;
   cancellationReason?: string | null;
   jobTitle?: string | null;
   customerName?: string | null;
   customerPhone?: string | null;
+  workerName?: string | null;
+  workerPhone?: string | null;
+  workerAvatarPath?: string | null;
   customer?: BookingPerson;
   worker?: BookingPerson;
   createdAt?: string;
@@ -78,11 +83,14 @@ async function request<T>(
     },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  const result = (await response.json().catch(() => null)) as ApiResponse<T> | null;
+  const result = (await response
+    .json()
+    .catch(() => null)) as ApiResponse<T> | null;
 
   if (!response.ok || !result?.success || result.data === undefined) {
     throw new Error(
-      result?.message || `Request failed (${response.status}). Please try again.`,
+      result?.message ||
+        `Request failed (${response.status}). Please try again.`,
     );
   }
 
@@ -97,19 +105,48 @@ export async function getBookings(
     role === "CUSTOMER"
       ? "/api/customer/bookings"
       : "/api/worker/booking-requests";
-  const data = await request<{ bookings?: Booking[]; requests?: Booking[] }>(
-    token,
-    path,
-    "GET",
-  );
-  const bookings = role === "WORKER" ? data.requests : data.bookings;
+  const response = await fetch(`${BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: "Bearer " + token,
+    },
+  });
+  const result = (await response.json().catch(() => null)) as
+    | (ApiResponse<{
+        bookings?: Booking[];
+        requests?: Booking[];
+      }> & {
+        bookings?: Booking[];
+        requests?: Booking[];
+      })
+    | null;
 
-  return (bookings ?? []).map((booking) => ({
+  if (!response.ok || !result || result.success === false) {
+    throw new Error(
+      result?.message ||
+        `Request failed (${response.status}). Please try again.`,
+    );
+  }
+
+  const data = result.data ?? result;
+  const bookings = data.requests ?? data.bookings;
+  if (!Array.isArray(bookings)) {
+    throw new Error("The booking response did not include a requests list.");
+  }
+
+  return bookings.map((booking) => ({
     ...booking,
     customer: booking.customer ?? {
       id: booking.customerId,
       name: booking.customerName ?? undefined,
       phone: booking.customerPhone ?? undefined,
+    },
+    worker: booking.worker ?? {
+      id: booking.workerId,
+      name: booking.workerName ?? undefined,
+      phone: booking.workerPhone ?? undefined,
+      avatarPath: booking.workerAvatarPath,
     },
   }));
 }
@@ -140,6 +177,7 @@ export async function respondToBooking(
     "PATCH",
     payload,
   );
+  console.log("Respond to booking response:", data);
   if (!data.booking) throw new Error("The response did not include a booking.");
   return data.booking;
 }

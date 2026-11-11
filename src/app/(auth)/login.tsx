@@ -65,6 +65,15 @@ export default function LoginScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <View style={styles.content}>
+        <TouchableOpacity
+          accessibilityRole="button"
+          accessibilityLabel="Back to home"
+          style={styles.backButton}
+          onPress={() => router.replace("/(public)/(tabs)/home/home")}
+        >
+          <Ionicons name="arrow-back" size={20} color="#333" />
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
           <View style={styles.logo}>
             <Ionicons name="hammer" size={32} color="#fff" />
@@ -169,6 +178,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingHorizontal: 24,
+  },
+
+  backButton: {
+    position: "absolute",
+    top: Platform.OS === "ios" ? 56 : 24,
+    left: 24,
+    zIndex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    minHeight: 44,
+    gap: 6,
+  },
+
+  backButtonText: {
+    color: "#333",
+    fontSize: 14,
+    fontWeight: "600",
   },
 
   logoContainer: {

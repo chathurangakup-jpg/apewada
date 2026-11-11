@@ -7,6 +7,7 @@ import {
   CustomerJobImageRequest,
   CustomerJobUpload,
   getCustomerJobs,
+  getCustomerBookings,
   updateCustomerJob,
   uploadJobImages,
 } from "./customerServices";
@@ -62,6 +63,23 @@ export const fetchCustomerJobs = createAsyncThunk<
   } catch (error) {
     return rejectWithValue(
       error instanceof Error ? error.message : "Unable to load your jobs",
+    );
+  }
+});
+
+export const fetchCustomerBookings = createAsyncThunk<
+  Awaited<ReturnType<typeof getCustomerBookings>>,
+  void,
+  { rejectValue: string }
+>("customer/fetchBookings", async (_, { getState, rejectWithValue }) => {
+  try {
+    const { token } = await getSession(getState);
+    return await getCustomerBookings(token);
+  } catch (error) {
+    return rejectWithValue(
+      error instanceof Error
+        ? error.message
+        : "Unable to load your booking requests",
     );
   }
 });
