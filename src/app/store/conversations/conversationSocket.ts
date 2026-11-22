@@ -39,3 +39,13 @@ export function connectConversationSocket(token: string): Socket {
 
   return socket;
 }
+
+export function disconnectConversationSocket(targetSocket?: Socket): void {
+  if (!socket || (targetSocket && socket !== targetSocket)) {
+    return;
+  }
+
+  socket.disconnect();
+  socket = null;
+  connectedToken = null;
+}

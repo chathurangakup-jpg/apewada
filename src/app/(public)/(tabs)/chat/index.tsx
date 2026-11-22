@@ -1,7 +1,4 @@
-import {
-  selectApiAuthToken,
-  selectApiAuthUser,
-} from "@/app/store/auth/authSelector";
+import { selectApiAuthUser } from "@/app/store/auth/authSelector";
 import {
   selectConversationError,
   selectConversationMessages,
@@ -13,23 +10,7 @@ import {
   selectCurrentConversation,
 } from "@/app/store/conversations/conversationSelector";
 import type { ConversationMessage } from "@/app/store/conversations/conversationServices";
-import {
-  normalizeConversation,
-  normalizeConversationMessage,
-} from "@/app/store/conversations/conversationServices";
-import {
-  addSocketConversation,
-  openConversation,
-  receiveSocketMessage,
-  setConversationSocketError,
-  updateSocketConversation,
-} from "@/app/store/conversations/conversationSlice";
-import {
-  connectConversationSocket,
-  SocketConversationCreatedPayload,
-  SocketConversationUpdatedPayload,
-  SocketMessagePayload,
-} from "@/app/store/conversations/conversationSocket";
+import { openConversation } from "@/app/store/conversations/conversationSlice";
 import {
   fetchConversationMessages,
   fetchConversations,
@@ -39,7 +20,6 @@ import {
 } from "@/app/store/conversations/conversationThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { selectCurrentUser } from "@/app/store/profile/profileSelector";
-import { getSavedSessionToken } from "@/app/store/profile/profileServices";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -83,7 +63,6 @@ export default function ChatScreen() {
   const conversationId = getSingleParam(conversationIdParam);
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const apiAuthToken = useAppSelector(selectApiAuthToken);
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const profileUser = useAppSelector(selectCurrentUser);
   const currentUserId = (profileUser ?? apiAuthUser)?.id;
@@ -151,106 +130,6 @@ export default function ChatScreen() {
       void initializeConversation();
     }, [initializeConversation]),
   );
-
-  useEffect(() => {
-    let activeSocket: ReturnType<typeof connectConversationSocket> | null =
-      null;
-    let isMounted = true;
-    const activeConversationId = conversation?.id;
-    const handleConnect = () => {
-      if (activeConversationId) {
-        activeSocket?.emit("conversation:join", {
-          conversationId: activeConversationId,
-        });
-      }
-    };
-    const handleNewMessage = (payload: SocketMessagePayload) => {
-      const message = normalizeConversationMessage(payload.message);
-      const isIncoming = message.senderId !== currentUserId;
-      dispatch(
-        receiveSocketMessage({
-          conversationId: payload.conversationId,
-          message,
-          isIncoming,
-        }),
-      );
-
-      if (payload.conversationId === activeConversationId && isIncoming) {
-        void dispatch(markMessagesRead(activeConversationId));
-      }
-    };
-    const handleConversationUpdated = (
-      payload: SocketConversationUpdatedPayload,
-    ) => {
-      dispatch(
-        updateSocketConversation({
-          conversationId: payload.conversationId,
-          lastMessage:
-            payload.lastMessage === null
-              ? null
-              : typeof payload.lastMessage === "string"
-                ? payload.lastMessage
-                : normalizeConversationMessage(payload.lastMessage).content,
-        }),
-      );
-    };
-    const handleConversationCreated = (
-      payload: SocketConversationCreatedPayload,
-    ) => {
-      const newConversation = normalizeConversation(
-        payload.conversation,
-        currentUserId,
-      );
-      dispatch(
-        addSocketConversation(newConversation),
-      );
-
-      if (!newConversation.participantName) {
-        void dispatch(fetchConversations());
-      }
-    };
-    const handleConnectError = (connectionError: Error) => {
-      dispatch(
-        setConversationSocketError(
-          connectionError.message || t("chat.realtimeFailed"),
-        ),
-      );
-    };
-
-    const connect = async () => {
-      const token = apiAuthToken ?? (await getSavedSessionToken());
-      if (!token || !isMounted) {
-        return;
-      }
-
-      activeSocket = connectConversationSocket(token);
-      activeSocket.on("connect", handleConnect);
-      activeSocket.on("connect_error", handleConnectError);
-      activeSocket.on("message:new", handleNewMessage);
-      activeSocket.on("conversation:updated", handleConversationUpdated);
-      activeSocket.on("conversation:created", handleConversationCreated);
-
-      if (activeSocket.connected) {
-        handleConnect();
-      }
-    };
-
-    void connect();
-
-    return () => {
-      isMounted = false;
-      if (activeConversationId) {
-        activeSocket?.emit("conversation:leave", {
-          conversationId: activeConversationId,
-        });
-      }
-      activeSocket?.off("connect", handleConnect);
-      activeSocket?.off("connect_error", handleConnectError);
-      activeSocket?.off("message:new", handleNewMessage);
-      activeSocket?.off("conversation:updated", handleConversationUpdated);
-      activeSocket?.off("conversation:created", handleConversationCreated);
-    };
-  }, [apiAuthToken, conversation?.id, currentUserId, dispatch, t]);
 
   useEffect(() => {
     if (!conversation || messages.length === 0) {

@@ -183,7 +183,10 @@ export default function PublicHomeScreen() {
     setRefreshing(true);
 
     try {
-      await dispatch(fetchHomeData());
+      await Promise.all([
+        dispatch(fetchHomeData()),
+        ...(isAuthenticated ? [dispatch(fetchCurrentProfile())] : []),
+      ]);
     } finally {
       setRefreshing(false);
     }

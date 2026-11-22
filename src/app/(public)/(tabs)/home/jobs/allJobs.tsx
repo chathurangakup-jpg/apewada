@@ -2,12 +2,11 @@ import JobCard from "@/components/Jobs/JobCard";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   ActivityIndicator,
   FlatList,
-  RefreshControl,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,16 +29,23 @@ export default function AllJobsScreen() {
   const isLoading = useAppSelector(selectAllJobsLoading);
   const error = useAppSelector(selectAllJobsError);
   const [refreshing, setRefreshing] = useState(false);
+  const isRefreshingRef = useRef(false);
 
   useEffect(() => {
     void dispatch(fetchAllJobs());
   }, [dispatch]);
 
   const refreshJobs = async () => {
+    if (isRefreshingRef.current || isLoading) {
+      return;
+    }
+
+    isRefreshingRef.current = true;
     setRefreshing(true);
     try {
       await dispatch(fetchAllJobs());
     } finally {
+      isRefreshingRef.current = false;
       setRefreshing(false);
     }
   };
@@ -102,9 +108,8 @@ export default function AllJobsScreen() {
         renderItem={({ item }: { item: HomeJob }) => (
           <JobCard job={item} onPress={() => handleJobPress(item.id)} />
         )}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={refreshJobs} />
-        }
+        refreshing={refreshing}
+        onRefresh={refreshJobs}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={renderEmptyState}
       />

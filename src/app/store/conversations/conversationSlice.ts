@@ -31,6 +31,18 @@ const initialState: ConversationState = {
   error: null,
 };
 
+function uniqueById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) {
+      return false;
+    }
+
+    seen.add(item.id);
+    return true;
+  });
+}
+
 const conversationSlice = createSlice({
   name: "conversations",
   initialState,
@@ -50,10 +62,16 @@ const conversationSlice = createSlice({
           conversationId: string;
           message: ConversationMessage;
           isIncoming: boolean;
+          isConversationActive: boolean;
         };
       },
     ) {
-      const { conversationId, message, isIncoming } = action.payload;
+      const {
+        conversationId,
+        message,
+        isIncoming,
+        isConversationActive,
+      } = action.payload;
       const summary = state.conversations.find(
         (conversation) => conversation.id === conversationId,
       );
@@ -62,7 +80,7 @@ const conversationSlice = createSlice({
         summary.lastMessage = message.content;
         summary.lastMessageAt = message.createdAt;
         summary.updatedAt = message.createdAt;
-        if (isIncoming && state.currentConversation?.id !== conversationId) {
+        if (isIncoming && !isConversationActive) {
           summary.unreadCount = (summary.unreadCount ?? 0) + 1;
         }
       }
@@ -129,7 +147,7 @@ const conversationSlice = createSlice({
       })
       .addCase(fetchConversations.fulfilled, (state, action) => {
         state.isLoadingConversations = false;
-        state.conversations = action.payload;
+        state.conversations = uniqueById(action.payload);
       })
       .addCase(fetchConversations.rejected, (state, action) => {
         state.isLoadingConversations = false;
@@ -144,7 +162,7 @@ const conversationSlice = createSlice({
       })
       .addCase(fetchConversationMessages.fulfilled, (state, action) => {
         state.isLoadingMessages = false;
-        state.messages = action.payload;
+        state.messages = uniqueById(action.payload);
       })
       .addCase(fetchConversationMessages.rejected, (state, action) => {
         state.isLoadingMessages = false;
@@ -172,6 +190,14 @@ const conversationSlice = createSlice({
           action.payload ??
           action.error.message ??
           "Unable to mark the conversation as read";
+      })
+      .addCase(markMessagesRead.fulfilled, (state, action) => {
+        const summary = state.conversations.find(
+          (conversation) => conversation.id === action.meta.arg,
+        );
+        if (summary) {
+          summary.unreadCount = 0;
+        }
       })
       .addCase(logoutCurrentUser.fulfilled, () => initialState);
   },

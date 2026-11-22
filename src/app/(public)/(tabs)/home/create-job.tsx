@@ -14,6 +14,7 @@ import { selectHomeCategories } from "@/app/store/home/homeSelector";
 import { fetchHomeData } from "@/app/store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import DistrictDropdown from "@/components/DistrictDropdown";
+import ProfileDatePicker from "@/components/ProfileDatePicker";
 import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -269,13 +270,10 @@ export default function CreateJobScreen() {
           style={styles.input}
         />
 
-        <Text style={styles.label}>Preferred date</Text>
-        <TextInput
+        <ProfileDatePicker
+          label="Preferred date"
           value={draft.preferredDate}
-          onChangeText={(value) => setField("preferredDate", value)}
-          placeholder="YYYY-MM-DD"
-          autoCapitalize="none"
-          style={styles.input}
+          onChange={(value) => setField("preferredDate", value)}
         />
 
         <View style={styles.imageHeader}>

@@ -9,6 +9,12 @@ export const selectCurrentConversation = (state: RootState) =>
 export const selectConversations = (state: RootState) =>
   state.conversations.conversations;
 
+export const selectUnreadConversationCount = (state: RootState) =>
+  state.conversations.conversations.reduce(
+    (total, conversation) => total + (conversation.unreadCount ?? 0),
+    0,
+  );
+
 export const selectConversationsLoading = (state: RootState) =>
   state.conversations.isLoadingConversations;
 
