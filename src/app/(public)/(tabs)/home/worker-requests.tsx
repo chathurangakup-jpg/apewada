@@ -7,7 +7,7 @@ import { fetchCustomerJobRequests } from "@/app/store/customer/customerThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -63,6 +63,7 @@ function statusColor(status: string) {
 
 export default function WorkerRequestsScreen() {
   const dispatch = useAppDispatch();
+  const router = useRouter();
   const params = useLocalSearchParams<{
     jobId?: string | string[];
     jobTitle?: string | string[];
@@ -221,6 +222,30 @@ export default function WorkerRequestsScreen() {
 
                 <Text style={styles.messageLabel}>Worker's message</Text>
                 <Text style={styles.message}>{request.message}</Text>
+                <TouchableOpacity
+                  accessibilityRole="button"
+                  style={styles.bookingButton}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/(public)/(tabs)/home/booking-request",
+                      params: {
+                        workerId: request.workerId,
+                        workerName: request.workerName,
+                        jobId: request.jobId,
+                        jobTitle: jobTitle ?? "",
+                      },
+                    })
+                  }
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={17}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.bookingButtonText}>
+                    Request Booking
+                  </Text>
+                </TouchableOpacity>
               </Card.Content>
             </Card>
           );
@@ -379,6 +404,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginTop: 5,
+  },
+  bookingButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#FF6B35",
+    borderRadius: 9,
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  bookingButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "700",
   },
   empty: {
     alignItems: "center",

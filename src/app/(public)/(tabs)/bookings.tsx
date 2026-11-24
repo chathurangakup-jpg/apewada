@@ -1,11 +1,6 @@
 import { selectApiAuthUser } from "@/app/store/auth/authSelector";
 import {
-  selectCustomerBookingRequests,
-  selectCustomerBookingsError,
-  selectCustomerBookingsLoading,
-} from "@/app/store/customer/customerSelector";
-import { fetchCustomerBookings } from "@/app/store/customer/customerThunk";
-import {
+  selectCustomerBookings,
   selectBookingError,
   selectBookingNotification,
   selectBookingSubmitting,
@@ -18,18 +13,16 @@ import {
   changeBookingStatus,
   fetchBookings,
   respondBooking,
-  submitBooking,
   submitBookingReview,
 } from "@/app/store/bookings/bookingThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { selectCurrentUser } from "@/app/store/profile/profileSelector";
-import DateTimePicker from "@react-native-community/datetimepicker";
-import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Modal,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -40,10 +33,6 @@ import {
 
 export default function BookingsScreen() {
   const dispatch = useAppDispatch();
-  const params = useLocalSearchParams<{
-    workerId?: string;
-    workerName?: string;
-  }>();
   const profileUser = useAppSelector(selectCurrentUser);
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const user = profileUser ?? apiAuthUser;
@@ -57,53 +46,38 @@ export default function BookingsScreen() {
   const bookings = useAppSelector(
     role === "WORKER"
       ? selectWorkerBookings
-      : selectCustomerBookingRequests,
+      : selectCustomerBookings,
   );
   const visibleBookings = role ? bookings : [];
-  const customerBookingsLoading = useAppSelector(
-    selectCustomerBookingsLoading,
-  );
-  const customerBookingsError = useAppSelector(selectCustomerBookingsError);
-  const workerBookingsLoading = useAppSelector(selectBookingsLoading);
-  const loading =
-    role === "WORKER"
-      ? workerBookingsLoading
-      : role === "CUSTOMER"
-        ? customerBookingsLoading
-        : false;
+  const loading = useAppSelector(selectBookingsLoading);
   const submitting = useAppSelector(selectBookingSubmitting);
-  const workerBookingsError = useAppSelector(selectBookingError);
-  const error =
-    role === "WORKER"
-      ? workerBookingsError
-      : role === "CUSTOMER"
-        ? customerBookingsError
-        : null;
+  const error = useAppSelector(selectBookingError);
   const notification = useAppSelector(selectBookingNotification);
-  const [date, setDate] = useState(new Date());
-  const [startTime, setStartTime] = useState(new Date(0, 0, 0, 9));
-  const [endTime, setEndTime] = useState(new Date(0, 0, 0, 11));
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
-  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedHalf, setSelectedHalf] = useState<
-    "MORNING" | "EVENING" | null
-  >(null);
   const [cancellationBookingId, setCancellationBookingId] = useState<
     string | null
   >(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [reviewBookingId, setReviewBookingId] = useState<string | null>(null);
   const [rating, setRating] = useState("5");
   const [comment, setComment] = useState("");
 
   useEffect(() => {
-    if (role === "CUSTOMER") {
-      void dispatch(fetchCustomerBookings());
-    } else if (role === "WORKER") {
-      void dispatch(fetchBookings("WORKER"));
+    if (role) {
+      void dispatch(fetchBookings(role));
     }
   }, [dispatch, role]);
+
+  const onRefresh = async () => {
+    if (!role) return;
+
+    setRefreshing(true);
+    try {
+      await dispatch(fetchBookings(role));
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (!notification) return;
@@ -111,22 +85,6 @@ export default function BookingsScreen() {
       { text: "OK", onPress: () => dispatch(clearBookingNotification()) },
     ]);
   }, [dispatch, notification]);
-
-  const createRequest = () => {
-    if (!params.workerId) {
-      Alert.alert("Booking", "Select a worker before requesting a booking.");
-      return;
-    }
-    if (!role) return;
-    void dispatch(
-      submitBooking({
-        workerId: params.workerId,
-        scheduledDate: formatDate(date),
-        startTime: formatTime(startTime),
-        endTime: formatTime(endTime),
-      }),
-    );
-  };
 
   const closeCancellationModal = () => {
     if (submitting) return;
@@ -162,135 +120,25 @@ export default function BookingsScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <ScrollView
+      contentContainerStyle={styles.container}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={() => void onRefresh()}
+          tintColor="#FF6B35"
+          colors={["#FF6B35"]}
+        />
+      }
+    >
       <Text style={styles.title}>Bookings</Text>
       {!role && (
         <Text style={styles.empty}>
           Booking requests are available for customer and worker accounts.
         </Text>
       )}
-      {role === "CUSTOMER" && params.workerId && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Book {params.workerName || "worker"}
-          </Text>
-          <TouchableOpacity
-            style={styles.pickerButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={styles.pickerText}>Date: {formatDate(date)}</Text>
-          </TouchableOpacity>
-          {showDatePicker && (
-            <DateTimePicker
-              value={date}
-              mode="date"
-              minimumDate={new Date()}
-              onChange={(_, selectedDate) => {
-                setShowDatePicker(false);
-                if (selectedDate) setDate(selectedDate);
-              }}
-            />
-          )}
-          <Text style={styles.label}>Preferred time</Text>
-          <View style={styles.halfDayOptions}>
-            <TouchableOpacity
-              style={[
-                styles.checkboxRow,
-                selectedHalf === "MORNING" && styles.checkboxRowSelected,
-              ]}
-              onPress={() => {
-                setSelectedHalf("MORNING");
-                setStartTime(new Date(0, 0, 0, 8));
-                setEndTime(new Date(0, 0, 0, 12));
-              }}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  selectedHalf === "MORNING" && styles.checkboxSelected,
-                ]}
-              />
-              <Text>Morning half (08:00 - 12:00)</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.checkboxRow,
-                selectedHalf === "EVENING" && styles.checkboxRowSelected,
-              ]}
-              onPress={() => {
-                setSelectedHalf("EVENING");
-                setStartTime(new Date(0, 0, 0, 13));
-                setEndTime(new Date(0, 0, 0, 17));
-              }}
-            >
-              <View
-                style={[
-                  styles.checkbox,
-                  selectedHalf === "EVENING" && styles.checkboxSelected,
-                ]}
-              />
-              <Text>Evening half (13:00 - 17:00)</Text>
-            </TouchableOpacity>
-          </View>
-          <TouchableOpacity
-            style={styles.customTimeButton}
-            onPress={() => setSelectedHalf(null)}
-          >
-            <Text style={styles.customTimeText}>Choose custom times</Text>
-          </TouchableOpacity>
-          {!selectedHalf && (
-            <>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowStartTimePicker(true)}
-              >
-                <Text style={styles.pickerText}>
-                  Start time: {formatTime(startTime)}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.pickerButton}
-                onPress={() => setShowEndTimePicker(true)}
-              >
-                <Text style={styles.pickerText}>
-                  End time: {formatTime(endTime)}
-                </Text>
-              </TouchableOpacity>
-              {showStartTimePicker && (
-                <DateTimePicker
-                  value={startTime}
-                  mode="time"
-                  onChange={(_, value) => {
-                    setShowStartTimePicker(false);
-                    if (value) setStartTime(value);
-                  }}
-                />
-              )}
-              {showEndTimePicker && (
-                <DateTimePicker
-                  value={endTime}
-                  mode="time"
-                  onChange={(_, value) => {
-                    setShowEndTimePicker(false);
-                    if (value) setEndTime(value);
-                  }}
-                />
-              )}
-            </>
-          )}
-          <TouchableOpacity
-            disabled={submitting}
-            style={styles.primaryButton}
-            onPress={createRequest}
-          >
-            <Text style={styles.primaryText}>
-              {submitting ? "Sending..." : "Request booking"}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
       {error && <Text style={styles.error}>{error}</Text>}
-      {loading ? (
+      {loading && visibleBookings.length === 0 ? (
         <ActivityIndicator size="large" color="#FF6B35" />
       ) : visibleBookings.length === 0 ? (
         <Text style={styles.empty}>No booking requests yet.</Text>
@@ -577,48 +425,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: "row", gap: 8 },
   empty: { textAlign: "center", color: "#6B7280", marginTop: 32 },
   error: { color: "#B91C1C", textAlign: "center" },
-  label: { fontWeight: "600", color: "#374151" },
-  pickerButton: {
-    minHeight: 46,
-    justifyContent: "center",
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: "#D1D5DB",
-    borderRadius: 8,
-  },
-  pickerText: { color: "#374151" },
-  halfDayOptions: { gap: 8 },
-  checkboxRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    borderRadius: 8,
-  },
-  checkboxRowSelected: { borderColor: "#FF6B35", backgroundColor: "#FFF5F0" },
-  checkbox: {
-    width: 18,
-    height: 18,
-    borderWidth: 1,
-    borderColor: "#9CA3AF",
-    borderRadius: 3,
-  },
-  checkboxSelected: { borderColor: "#FF6B35", borderWidth: 5 },
-  customTimeButton: { alignSelf: "flex-start" },
-  customTimeText: { color: "#FF6B35", fontWeight: "600" },
 });
-
-function formatDate(value: Date) {
-  const month = String(value.getMonth() + 1).padStart(2, "0");
-  const day = String(value.getDate()).padStart(2, "0");
-  return `${value.getFullYear()}-${month}-${day}`;
-}
-
-function formatTime(value: Date) {
-  return value.toTimeString().slice(0, 5);
-}
 
 function formatBookingDate(value?: string) {
   if (!value) return "Not set";

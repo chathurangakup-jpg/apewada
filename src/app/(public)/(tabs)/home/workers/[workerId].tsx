@@ -44,8 +44,8 @@ export default function WorkerDetailsScreen() {
   );
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const profileUser = useAppSelector(selectCurrentUser);
-  const isWorkerViewer =
-    (profileUser ?? apiAuthUser)?.role.toUpperCase() === "WORKER";
+  const isCustomerViewer =
+    (profileUser ?? apiAuthUser)?.role.toUpperCase() === "CUSTOMER";
   const { t } = useTranslation();
 
   const [isExpanded, setIsExpanded] = useState(false);
@@ -103,7 +103,7 @@ export default function WorkerDetailsScreen() {
 
   const handleHire = () => {
     router.push({
-      pathname: "/(public)/(tabs)/bookings",
+      pathname: "/(public)/(tabs)/home/booking-request",
       params: {
         workerId: worker.id,
         workerName: worker.user?.name || worker.name,
@@ -193,7 +193,7 @@ export default function WorkerDetailsScreen() {
           )}
         </View>
 
-        {!isWorkerViewer && (
+        {isCustomerViewer && (
           <View style={styles.actionButtons}>
             <TouchableOpacity style={styles.callButton} onPress={handleCall}>
               <Ionicons name="call-outline" size={20} color="#FFFFFF" />

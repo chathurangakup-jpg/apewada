@@ -311,7 +311,13 @@ export default function TabsLayout() {
   const requiresAuth =
     ["bookings", "chat", "profile"].includes(tabName) ||
     (tabName === "home" &&
-      (["create-job", "my-jobs"].includes(homeSection) ||
+      ([
+        "create-job",
+        "my-jobs",
+        "booking-request",
+        "worker-job-requests",
+        "worker-requests",
+      ].includes(homeSection) ||
         (homeSection === "workers" &&
           homeItem !== undefined &&
           !["workers", "allWorkers"].includes(homeItem)) ||
