@@ -164,50 +164,69 @@ export default function MyJobsScreen() {
                     </Text>
                   </View>
                 </TouchableOpacity>
-                {canManageJob && (
-                  <View style={styles.actions}>
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      disabled={deletingJobId !== null}
-                      style={styles.editButton}
-                      onPress={() =>
-                        router.push({
-                          pathname: "/(public)/(tabs)/home/create-job",
-                          params: { jobId: job.id },
-                        })
-                      }
-                    >
-                      <Ionicons
-                        name="create-outline"
-                        size={16}
-                        color="#FF6B35"
-                      />
-                      <Text style={styles.editText}>Edit Job</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      accessibilityRole="button"
-                      disabled={deletingJobId !== null}
-                      style={[
-                        styles.deleteButton,
-                        isDeleting && styles.disabledButton,
-                      ]}
-                      onPress={() => confirmDeleteJob(job.id, job.title)}
-                    >
-                      {isDeleting ? (
-                        <ActivityIndicator size="small" color="#DC2626" />
-                      ) : (
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    accessibilityRole="button"
+                    style={styles.requestsButton}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/(public)/(tabs)/home/worker-requests",
+                        params: { jobId: job.id, jobTitle: job.title },
+                      })
+                    }
+                  >
+                    <Ionicons
+                      name="chatbubbles-outline"
+                      size={16}
+                      color="#2563EB"
+                    />
+                    <Text style={styles.requestsText}>Worker Requests</Text>
+                  </TouchableOpacity>
+                  {canManageJob && (
+                    <>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        disabled={deletingJobId !== null}
+                        style={styles.editButton}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/(public)/(tabs)/home/create-job",
+                            params: { jobId: job.id },
+                          })
+                        }
+                      >
                         <Ionicons
-                          name="trash-outline"
+                          name="create-outline"
                           size={16}
-                          color="#DC2626"
+                          color="#FF6B35"
                         />
-                      )}
-                      <Text style={styles.deleteText}>
-                        {isDeleting ? "Deleting..." : "Delete Job"}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
+                        <Text style={styles.editText}>Edit Job</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        accessibilityRole="button"
+                        disabled={deletingJobId !== null}
+                        style={[
+                          styles.deleteButton,
+                          isDeleting && styles.disabledButton,
+                        ]}
+                        onPress={() => confirmDeleteJob(job.id, job.title)}
+                      >
+                        {isDeleting ? (
+                          <ActivityIndicator size="small" color="#DC2626" />
+                        ) : (
+                          <Ionicons
+                            name="trash-outline"
+                            size={16}
+                            color="#DC2626"
+                          />
+                        )}
+                        <Text style={styles.deleteText}>
+                          {isDeleting ? "Deleting..." : "Delete Job"}
+                        </Text>
+                      </TouchableOpacity>
+                    </>
+                  )}
+                </View>
               </Card.Content>
             </Card>
           );
@@ -301,12 +320,23 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E7EB",
     borderTopWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 20,
     marginTop: 14,
     paddingTop: 12,
   },
   editText: {
     color: "#FF6B35",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  requestsButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+  },
+  requestsText: {
+    color: "#2563EB",
     fontSize: 13,
     fontWeight: "600",
   },

@@ -52,6 +52,7 @@ export default function PublicHomeScreen() {
   const authenticatedUser = profileUser ?? apiAuthUser;
   const authenticatedUserRole = authenticatedUser?.role.toUpperCase();
   const isCustomer = authenticatedUserRole === "CUSTOMER";
+  const isWorker = authenticatedUserRole === "WORKER";
   const authenticatedUserRoleLabel =
     authenticatedUserRole === "WORKER"
       ? t("home.workerRole")
@@ -377,6 +378,26 @@ export default function PublicHomeScreen() {
               >
                 <Ionicons name="briefcase-outline" size={17} color="#FF6B35" />
                 <Text style={styles.showMyJobsButtonText}>Show My Jobs</Text>
+              </TouchableOpacity>
+            )}
+            {isWorker && (
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={styles.showWorkerRequestsButton}
+                onPress={() =>
+                  router.push(
+                    "/(public)/(tabs)/home/worker-job-requests",
+                  )
+                }
+              >
+                <Ionicons
+                  name="chatbubbles-outline"
+                  size={17}
+                  color="#FF6B35"
+                />
+                <Text style={styles.showMyJobsButtonText}>
+                  Show Job Requests
+                </Text>
               </TouchableOpacity>
             )}
           </View>
@@ -750,6 +771,14 @@ const styles = StyleSheet.create({
   },
 
   showMyJobsButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 12,
+  },
+
+  showWorkerRequestsButton: {
     alignItems: "center",
     alignSelf: "flex-start",
     flexDirection: "row",

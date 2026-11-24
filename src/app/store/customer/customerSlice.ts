@@ -7,10 +7,11 @@ import {
   submitBooking,
   submitBookingReview,
 } from "../bookings/bookingThunk";
-import { CustomerJob } from "./customerServices";
+import { CustomerJob, CustomerJobRequest } from "./customerServices";
 import {
   deleteCustomerJob,
   editCustomerJob,
+  fetchCustomerJobRequests,
   fetchCustomerBookings,
   fetchCustomerJobs,
   submitCustomerJob,
@@ -25,6 +26,9 @@ interface CustomerState {
   bookingsError: string | null;
   isSubmitting: boolean;
   deletingJobId: string | null;
+  jobRequestsByJobId: Record<string, CustomerJobRequest[]>;
+  loadingJobRequestsByJobId: Record<string, boolean>;
+  jobRequestsErrorByJobId: Record<string, string | null>;
   error: string | null;
 }
 
@@ -37,6 +41,9 @@ const initialState: CustomerState = {
   bookingsError: null,
   isSubmitting: false,
   deletingJobId: null,
+  jobRequestsByJobId: {},
+  loadingJobRequestsByJobId: {},
+  jobRequestsErrorByJobId: {},
   error: null,
 };
 
@@ -63,6 +70,20 @@ const customerSlice = createSlice({
       .addCase(fetchCustomerJobs.rejected, (state, action) => {
         state.isLoadingJobs = false;
         state.jobsError =
+          action.payload ?? action.error.message ?? "Request failed";
+      })
+      .addCase(fetchCustomerJobRequests.pending, (state, action) => {
+        state.loadingJobRequestsByJobId[action.meta.arg] = true;
+        state.jobRequestsErrorByJobId[action.meta.arg] = null;
+      })
+      .addCase(fetchCustomerJobRequests.fulfilled, (state, action) => {
+        state.loadingJobRequestsByJobId[action.payload.jobId] = false;
+        state.jobRequestsByJobId[action.payload.jobId] =
+          action.payload.requests;
+      })
+      .addCase(fetchCustomerJobRequests.rejected, (state, action) => {
+        state.loadingJobRequestsByJobId[action.meta.arg] = false;
+        state.jobRequestsErrorByJobId[action.meta.arg] =
           action.payload ?? action.error.message ?? "Request failed";
       })
       .addCase(submitCustomerJob.pending, (state) => {

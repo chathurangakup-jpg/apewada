@@ -28,3 +28,27 @@ export const selectIsLoadingFeatured = (state: RootState) => {
 export const selectWorkersError = (state: RootState) => {
   return state.workerApi.queries["getWorkers"]?.error as Error | null;
 };
+
+export const selectIsSubmittingWorkerQuotation = (state: RootState) =>
+  state.worker.isSubmittingQuotation;
+
+export const selectWorkerQuotationError = (state: RootState) =>
+  state.worker.quotationError;
+
+export const selectSubmittedQuotationJobIds = (state: RootState) =>
+  state.worker.submittedQuotationJobIds;
+
+export const selectMyWorkerJobRequests = (state: RootState) =>
+  state.worker.myJobRequests;
+
+export const selectIsLoadingMyWorkerJobRequests = (state: RootState) =>
+  state.worker.isLoadingMyJobRequests;
+
+export const selectMyWorkerJobRequestsError = (state: RootState) =>
+  state.worker.myJobRequestsError;
+
+export const selectUpdatingWorkerQuotationJobId = (state: RootState) =>
+  state.worker.updatingQuotationJobId;
+
+export const selectWithdrawingWorkerQuotationJobId = (state: RootState) =>
+  state.worker.withdrawingQuotationJobId;

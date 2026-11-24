@@ -38,6 +38,24 @@ export interface CustomerJob {
   images: CustomerJobImage[];
 }
 
+export interface CustomerJobRequest {
+  id: string;
+  jobId: string;
+  workerId: string;
+  workerName: string;
+  workerAvatarPath?: string | null;
+  workerBio?: string | null;
+  experienceYears?: number | null;
+  averageRating?: number | null;
+  reviewCount?: number | null;
+  proposedBudget: string | number;
+  message: string;
+  proposedDate: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CustomerJobDraft {
   title: string;
   description: string;
@@ -68,6 +86,14 @@ interface CustomerJobsResponse {
   message?: string;
   data?: {
     jobs?: CustomerJob[];
+  };
+}
+
+interface CustomerJobRequestsResponse {
+  success: boolean;
+  message?: string;
+  data?: {
+    requests?: CustomerJobRequest[];
   };
 }
 
@@ -213,6 +239,33 @@ export async function getCustomerJobs(token: string): Promise<CustomerJob[]> {
   }
 
   return result.data?.jobs ?? [];
+}
+
+export async function getCustomerJobRequests(
+  token: string,
+  jobId: string,
+): Promise<CustomerJobRequest[]> {
+  const response = await fetch(
+    `${BASE_URL}/api/customer/jobs/${encodeURIComponent(jobId)}/requests`,
+    {
+      headers: {
+        Accept: "application/json",
+        Authorization: "Bearer " + token,
+      },
+    },
+  );
+  const result = (await response.json().catch(() => null)) as
+    | CustomerJobRequestsResponse
+    | null;
+
+  if (!response.ok || !result?.success) {
+    throw new Error(
+      result?.message ||
+        `Unable to load worker requests (${response.status}). Please try again.`,
+    );
+  }
+
+  return result.data?.requests ?? [];
 }
 
 export function getCustomerBookings(token: string) {

@@ -7,8 +7,10 @@ import {
   CustomerJobImageRequest,
   CustomerJobUpload,
   deleteCustomerJob as deleteCustomerJobRequest,
+  getCustomerJobRequests,
   getCustomerJobs,
   getCustomerBookings,
+  CustomerJobRequest,
   updateCustomerJob,
   uploadJobImages,
 } from "./customerServices";
@@ -67,6 +69,29 @@ export const fetchCustomerJobs = createAsyncThunk<
     );
   }
 });
+
+export const fetchCustomerJobRequests = createAsyncThunk<
+  { jobId: string; requests: CustomerJobRequest[] },
+  string,
+  { rejectValue: string }
+>(
+  "customer/fetchJobRequests",
+  async (jobId, { getState, rejectWithValue }) => {
+    try {
+      const { token } = await getSession(getState);
+      return {
+        jobId,
+        requests: await getCustomerJobRequests(token, jobId),
+      };
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error
+          ? error.message
+          : "Unable to load worker requests",
+      );
+    }
+  },
+);
 
 export const fetchCustomerBookings = createAsyncThunk<
   Awaited<ReturnType<typeof getCustomerBookings>>,

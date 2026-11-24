@@ -21,3 +21,13 @@ export const selectCustomerJobsLoading = (state: RootState) =>
   state.customer.isLoadingJobs;
 export const selectCustomerJobsError = (state: RootState) =>
   state.customer.jobsError;
+export const selectCustomerJobRequests = (state: RootState, jobId?: string) =>
+  jobId ? state.customer.jobRequestsByJobId[jobId] ?? [] : [];
+export const selectCustomerJobRequestsLoading = (
+  state: RootState,
+  jobId?: string,
+) => (jobId ? state.customer.loadingJobRequestsByJobId[jobId] ?? false : false);
+export const selectCustomerJobRequestsError = (
+  state: RootState,
+  jobId?: string,
+) => (jobId ? state.customer.jobRequestsErrorByJobId[jobId] ?? null : null);

@@ -6,6 +6,8 @@ export default function HomeLayout() {
       <Stack.Screen name="home" />
       <Stack.Screen name="create-job" />
       <Stack.Screen name="my-jobs" />
+      <Stack.Screen name="worker-requests" />
+      <Stack.Screen name="worker-job-requests" />
       <Stack.Screen name="workers" />
       <Stack.Screen name="workers/all" />
       <Stack.Screen name="jobs/all" />

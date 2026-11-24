@@ -11,8 +11,16 @@ import {
   selectCustomerJobById,
 } from "@/app/store/customer/customerSelector";
 import { deleteCustomerJob } from "@/app/store/customer/customerThunk";
+import {
+  selectIsSubmittingWorkerQuotation,
+  selectSubmittedQuotationJobIds,
+  selectWorkerQuotationError,
+} from "@/app/store/workers/workerSelectors";
+import { clearWorkerQuotationError } from "@/app/store/workers/workerSlice";
+import { submitWorkerQuotation } from "@/app/store/workers/workerThunk";
 import { selectCurrentUser } from "@/app/store/profile/profileSelector";
 import Header from "@/components/Splash/commonComponents/Header";
+import ProfileDatePicker from "@/components/ProfileDatePicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -21,10 +29,13 @@ import {
   Alert,
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
@@ -32,6 +43,21 @@ import {
 // ============================================================
 // SCREEN
 // ============================================================
+
+const getTodayDateString = () => {
+  const today = new Date();
+  return [
+    today.getFullYear(),
+    String(today.getMonth() + 1).padStart(2, "0"),
+    String(today.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
+const getStartOfToday = () => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+};
 
 export default function JobDetailsScreen() {
   const router = useRouter();
@@ -54,6 +80,13 @@ export default function JobDetailsScreen() {
     selectCustomerJobById(state, jobId),
   );
   const deletingJobId = useAppSelector(selectCustomerDeletingJobId);
+  const isSubmittingQuotation = useAppSelector(
+    selectIsSubmittingWorkerQuotation,
+  );
+  const quotationError = useAppSelector(selectWorkerQuotationError);
+  const submittedQuotationJobIds = useAppSelector(
+    selectSubmittedQuotationJobIds,
+  );
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const profileUser = useAppSelector(selectCurrentUser);
   const currentUser = profileUser ?? apiAuthUser;
@@ -62,6 +95,13 @@ export default function JobDetailsScreen() {
   const isCustomerViewer =
     currentUser?.role.toUpperCase() === "CUSTOMER";
   const [isCustomerModalVisible, setIsCustomerModalVisible] = useState(false);
+  const [isQuotationModalVisible, setIsQuotationModalVisible] = useState(false);
+  const [proposedBudget, setProposedBudget] = useState("");
+  const [quotationMessage, setQuotationMessage] = useState("");
+  const [proposedDate, setProposedDate] = useState(getTodayDateString);
+  const [quotationFormError, setQuotationFormError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (jobId && !job && !isLoading && !error) {
@@ -178,6 +218,54 @@ export default function JobDetailsScreen() {
         },
       ],
     );
+  };
+
+  const openQuotationForm = () => {
+    setProposedBudget("");
+    setQuotationMessage("");
+    setProposedDate(getTodayDateString());
+    setQuotationFormError(null);
+    dispatch(clearWorkerQuotationError());
+    setIsQuotationModalVisible(true);
+  };
+
+  const handleSubmitQuotation = async () => {
+    const budget = Number(proposedBudget);
+    if (!Number.isFinite(budget) || budget <= 0) {
+      setQuotationFormError("Enter a budget greater than zero.");
+      return;
+    }
+    if (!quotationMessage.trim()) {
+      setQuotationFormError("Add a message explaining your quotation.");
+      return;
+    }
+    if (!proposedDate) {
+      setQuotationFormError("Select your proposed date.");
+      return;
+    }
+    if (!jobId) {
+      setQuotationFormError("Unable to identify this job. Please try again.");
+      return;
+    }
+
+    setQuotationFormError(null);
+    const result = await dispatch(
+      submitWorkerQuotation({
+        jobId,
+        quotation: {
+          proposedBudget: budget,
+          message: quotationMessage.trim(),
+          proposedDate,
+        },
+      }),
+    );
+    if (submitWorkerQuotation.fulfilled.match(result)) {
+      setIsQuotationModalVisible(false);
+      Alert.alert(
+        "Quotation submitted",
+        "The customer has been notified of your quotation.",
+      );
+    }
   };
 
   const handleShowCustomerDetails = () => {
@@ -620,6 +708,98 @@ export default function JobDetailsScreen() {
         </View>
       </Modal>
 
+      <Modal
+        transparent
+        animationType="slide"
+        visible={isQuotationModalVisible}
+        onRequestClose={() => setIsQuotationModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          style={styles.modalOverlay}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          <View style={styles.quotationModalContent}>
+            <ScrollView
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Submit a Quotation</Text>
+                <TouchableOpacity
+                  accessibilityLabel="Close quotation form"
+                  disabled={isSubmittingQuotation}
+                  onPress={() => setIsQuotationModalVisible(false)}
+                >
+                  <Ionicons name="close" size={24} color="#374151" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.quotationDescription}>
+                Send the customer your proposed budget, message, and available
+                date.
+              </Text>
+
+              <Text style={styles.quotationLabel}>Proposed budget (LKR)</Text>
+              <TextInput
+                accessibilityLabel="Proposed budget"
+                style={styles.quotationInput}
+                value={proposedBudget}
+                onChangeText={setProposedBudget}
+                keyboardType="decimal-pad"
+                placeholder="e.g. 15000"
+                placeholderTextColor="#9CA3AF"
+              />
+
+              <Text style={styles.quotationLabel}>Message</Text>
+              <TextInput
+                accessibilityLabel="Quotation message"
+                style={[styles.quotationInput, styles.quotationMessageInput]}
+                value={quotationMessage}
+                onChangeText={setQuotationMessage}
+                multiline
+                maxLength={1000}
+                textAlignVertical="top"
+                placeholder="Describe how you can complete this job"
+                placeholderTextColor="#9CA3AF"
+              />
+
+              <ProfileDatePicker
+                label="Proposed date"
+                value={proposedDate}
+                onChange={setProposedDate}
+                minimumDate={getStartOfToday()}
+              />
+
+              {(quotationFormError || quotationError) && (
+                <Text style={styles.quotationError}>
+                  {quotationFormError || quotationError}
+                </Text>
+              )}
+
+              <TouchableOpacity
+                accessibilityRole="button"
+                style={[
+                  styles.submitQuotationButton,
+                  isSubmittingQuotation && styles.disabledActionButton,
+                ]}
+                disabled={isSubmittingQuotation}
+                activeOpacity={0.8}
+                onPress={() => void handleSubmitQuotation()}
+              >
+                {isSubmittingQuotation ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Ionicons name="send-outline" size={18} color="#FFFFFF" />
+                )}
+                <Text style={styles.submitQuotationButtonText}>
+                  {isSubmittingQuotation ? "Submitting..." : "Send Quotation"}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
       {/* ====================================================== */}
       {/* BOTTOM ACTION */}
       {/* ====================================================== */}
@@ -678,17 +858,28 @@ export default function JobDetailsScreen() {
             </TouchableOpacity>
           )}
           <TouchableOpacity
-            style={styles.applyButton}
+            style={[
+              styles.applyButton,
+              submittedQuotationJobIds.includes(job.id) &&
+                styles.disabledActionButton,
+            ]}
+            disabled={
+              isSubmittingQuotation ||
+              submittedQuotationJobIds.includes(job.id)
+            }
             activeOpacity={0.8}
-            onPress={() => {
-              // TODO:
-              // Navigate to quotation/apply screen
-              console.log("Apply for job:", job.id);
-            }}
+            onPress={openQuotationForm}
           >
-            <Ionicons name="send-outline" size={20} color="#FFFFFF" />
-
-            <Text style={styles.applyButtonText}>Apply for This Job</Text>
+            {isSubmittingQuotation ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="send-outline" size={20} color="#FFFFFF" />
+            )}
+            <Text style={styles.applyButtonText}>
+              {submittedQuotationJobIds.includes(job.id)
+                ? "Quotation Submitted"
+                : "Apply for This Job"}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
@@ -1091,6 +1282,14 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
   },
 
+  quotationModalContent: {
+    maxHeight: "90%",
+    padding: 20,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+  },
+
   modalHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1101,6 +1300,61 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "700",
     color: "#111827",
+  },
+
+  quotationDescription: {
+    color: "#6B7280",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 10,
+  },
+
+  quotationLabel: {
+    color: "#374151",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 8,
+    marginTop: 16,
+  },
+
+  quotationInput: {
+    backgroundColor: "#FFFFFF",
+    borderColor: "#D1D5DB",
+    borderRadius: 10,
+    borderWidth: 1,
+    color: "#111827",
+    fontSize: 15,
+    minHeight: 48,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+
+  quotationMessageInput: {
+    minHeight: 100,
+  },
+
+  quotationError: {
+    color: "#B91C1C",
+    fontSize: 13,
+    marginTop: 12,
+  },
+
+  submitQuotationButton: {
+    alignItems: "center",
+    backgroundColor: "#FF6B35",
+    borderRadius: 10,
+    flexDirection: "row",
+    gap: 8,
+    height: 50,
+    justifyContent: "center",
+    marginBottom: 12,
+    marginTop: 20,
+  },
+
+  submitQuotationButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
   },
 
   customerDetails: {

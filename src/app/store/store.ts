@@ -10,6 +10,7 @@ import { jobApi } from "./jobs/jobApi";
 import profileReducer from "./profile/profileSlice";
 import authReducer from "./users/userSlices";
 import { workerApi } from "./workers/workerApi";
+import workerReducer from "./workers/workerSlice";
 
 export const store = configureStore({
   reducer: {
@@ -20,6 +21,7 @@ export const store = configureStore({
     home: homeReducer,
     profile: profileReducer,
     auth: authReducer,
+    worker: workerReducer,
     [workerApi.reducerPath]: workerApi.reducer,
     [jobApi.reducerPath]: jobApi.reducer,
   },
