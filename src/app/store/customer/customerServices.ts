@@ -174,6 +174,31 @@ export function updateCustomerJob(
   );
 }
 
+export async function deleteCustomerJob(
+  token: string,
+  jobId: string,
+): Promise<void> {
+  const response = await fetch(
+    `${BASE_URL}/api/customer/jobs/${encodeURIComponent(jobId)}`,
+    {
+      method: "DELETE",
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    },
+  );
+  if (response.ok) {
+    return;
+  }
+
+  const result = (await response.json().catch(() => null)) as
+    | { success?: boolean; message?: string }
+    | null;
+
+  throw new Error(result?.message || "Unable to delete your job");
+}
+
 export async function getCustomerJobs(token: string): Promise<CustomerJob[]> {
   const response = await fetch(`${BASE_URL}/api/customer/jobs`, {
     headers: {

@@ -1,17 +1,22 @@
-import Header from "@/components/Splash/commonComponents/Header";
 import {
+  selectCustomerDeletingJobId,
   selectCustomerJobsError,
   selectCustomerJobsLoading,
   selectCustomerPostedJobs,
 } from "@/app/store/customer/customerSelector";
-import { fetchCustomerJobs } from "@/app/store/customer/customerThunk";
+import {
+  deleteCustomerJob,
+  fetchCustomerJobs,
+} from "@/app/store/customer/customerThunk";
 import { fetchJobById } from "@/app/store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
+import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   RefreshControl,
   StyleSheet,
@@ -46,6 +51,7 @@ export default function MyJobsScreen() {
   const dispatch = useAppDispatch();
   const jobs = useAppSelector(selectCustomerPostedJobs);
   const isLoading = useAppSelector(selectCustomerJobsLoading);
+  const deletingJobId = useAppSelector(selectCustomerDeletingJobId);
   const error = useAppSelector(selectCustomerJobsError);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -68,6 +74,23 @@ export default function MyJobsScreen() {
       pathname: "/(public)/(tabs)/home/jobs/[jobId]",
       params: { jobId },
     });
+  };
+
+  const confirmDeleteJob = (jobId: string, title: string) => {
+    Alert.alert(
+      "Delete job?",
+      `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void dispatch(deleteCustomerJob(jobId));
+          },
+        },
+      ],
+    );
   };
 
   if (isLoading && jobs.length === 0) {
@@ -101,14 +124,17 @@ export default function MyJobsScreen() {
         }
         renderItem={({ item: job }) => {
           const color = statusColor(job.status);
+          const canManageJob =
+            job.status === "PENDING_APPROVAL" || job.status === "OPEN";
+          const isDeleting = deletingJobId === job.id;
 
           return (
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => showJobDetails(job.id)}
-            >
-              <Card style={styles.card}>
-                <Card.Content>
+            <Card style={styles.card}>
+              <Card.Content>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => showJobDetails(job.id)}
+                >
                   <View style={styles.cardHeader}>
                     <Text style={styles.title} numberOfLines={2}>
                       {job.title}
@@ -128,13 +154,21 @@ export default function MyJobsScreen() {
                     {job.description}
                   </Text>
                   <View style={styles.location}>
-                    <Ionicons name="location-outline" size={16} color="#6B7280" />
+                    <Ionicons
+                      name="location-outline"
+                      size={16}
+                      color="#6B7280"
+                    />
                     <Text style={styles.locationText}>
                       {job.city}, {job.district}
                     </Text>
                   </View>
-                  {job.status === "PENDING_APPROVAL" && (
+                </TouchableOpacity>
+                {canManageJob && (
+                  <View style={styles.actions}>
                     <TouchableOpacity
+                      accessibilityRole="button"
+                      disabled={deletingJobId !== null}
                       style={styles.editButton}
                       onPress={() =>
                         router.push({
@@ -143,13 +177,39 @@ export default function MyJobsScreen() {
                         })
                       }
                     >
-                      <Ionicons name="create-outline" size={16} color="#FF6B35" />
+                      <Ionicons
+                        name="create-outline"
+                        size={16}
+                        color="#FF6B35"
+                      />
                       <Text style={styles.editText}>Edit Job</Text>
                     </TouchableOpacity>
-                  )}
-                </Card.Content>
-              </Card>
-            </TouchableOpacity>
+                    <TouchableOpacity
+                      accessibilityRole="button"
+                      disabled={deletingJobId !== null}
+                      style={[
+                        styles.deleteButton,
+                        isDeleting && styles.disabledButton,
+                      ]}
+                      onPress={() => confirmDeleteJob(job.id, job.title)}
+                    >
+                      {isDeleting ? (
+                        <ActivityIndicator size="small" color="#DC2626" />
+                      ) : (
+                        <Ionicons
+                          name="trash-outline"
+                          size={16}
+                          color="#DC2626"
+                        />
+                      )}
+                      <Text style={styles.deleteText}>
+                        {isDeleting ? "Deleting..." : "Delete Job"}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </Card.Content>
+            </Card>
           );
         }}
         ListEmptyComponent={
@@ -236,8 +296,30 @@ const styles = StyleSheet.create({
     gap: 5,
     marginTop: 12,
   },
+  actions: {
+    alignItems: "center",
+    borderTopColor: "#E5E7EB",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 20,
+    marginTop: 14,
+    paddingTop: 12,
+  },
   editText: {
     color: "#FF6B35",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  deleteButton: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  deleteText: {
+    color: "#DC2626",
     fontSize: 13,
     fontWeight: "600",
   },

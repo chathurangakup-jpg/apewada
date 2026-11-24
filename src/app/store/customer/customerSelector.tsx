@@ -14,6 +14,8 @@ export const selectCustomerJobById = (state: RootState, jobId?: string) =>
     : null;
 export const selectCustomerJobSubmitting = (state: RootState) =>
   state.customer.isSubmitting;
+export const selectCustomerDeletingJobId = (state: RootState) =>
+  state.customer.deletingJobId;
 export const selectCustomerJobError = (state: RootState) => state.customer.error;
 export const selectCustomerJobsLoading = (state: RootState) =>
   state.customer.isLoadingJobs;

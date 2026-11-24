@@ -6,6 +6,11 @@ import {
 import { fetchJobById } from "@/app/store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { selectApiAuthUser } from "@/app/store/auth/authSelector";
+import {
+  selectCustomerDeletingJobId,
+  selectCustomerJobById,
+} from "@/app/store/customer/customerSelector";
+import { deleteCustomerJob } from "@/app/store/customer/customerThunk";
 import { selectCurrentUser } from "@/app/store/profile/profileSelector";
 import Header from "@/components/Splash/commonComponents/Header";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,6 +18,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Alert,
   ActivityIndicator,
   Image,
   Modal,
@@ -44,10 +50,17 @@ export default function JobDetailsScreen() {
   const error = useAppSelector((state) =>
     jobId ? selectJobDetailsError(state, jobId) : null,
   );
+  const customerJob = useAppSelector((state) =>
+    selectCustomerJobById(state, jobId),
+  );
+  const deletingJobId = useAppSelector(selectCustomerDeletingJobId);
   const apiAuthUser = useAppSelector(selectApiAuthUser);
   const profileUser = useAppSelector(selectCurrentUser);
+  const currentUser = profileUser ?? apiAuthUser;
   const isWorkerViewer =
-    (profileUser ?? apiAuthUser)?.role.toUpperCase() === "WORKER";
+    currentUser?.role.toUpperCase() === "WORKER";
+  const isCustomerViewer =
+    currentUser?.role.toUpperCase() === "CUSTOMER";
   const [isCustomerModalVisible, setIsCustomerModalVisible] = useState(false);
 
   useEffect(() => {
@@ -132,6 +145,40 @@ export default function JobDetailsScreen() {
 
   const isOpen = job.status?.toLowerCase() === "open";
   const customerId = job.customer?.id || job.customerId || job.clientId;
+  const isCustomerOwner =
+    isCustomerViewer &&
+    (customerJob !== null || (!!currentUser?.id && customerId === currentUser.id));
+  const canManageJob =
+    isCustomerOwner &&
+    (job.status || customerJob?.status)?.toUpperCase() === "PENDING_APPROVAL";
+  const isDeleting = deletingJobId === job.id;
+
+  const handleDeleteJob = () => {
+    Alert.alert(
+      "Delete job?",
+      `Are you sure you want to delete "${job.title || job.name || "this job"}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => {
+            void dispatch(deleteCustomerJob(job.id))
+              .unwrap()
+              .then(() => router.back())
+              .catch((deleteError: unknown) => {
+                Alert.alert(
+                  "Unable to delete job",
+                  deleteError instanceof Error
+                    ? deleteError.message
+                    : "Please try again.",
+                );
+              });
+          },
+        },
+      ],
+    );
+  };
 
   const handleShowCustomerDetails = () => {
     setIsCustomerModalVisible(true);
@@ -576,6 +623,45 @@ export default function JobDetailsScreen() {
       {/* ====================================================== */}
       {/* BOTTOM ACTION */}
       {/* ====================================================== */}
+
+      {canManageJob && (
+        <View style={styles.bottomContainer}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={deletingJobId !== null}
+            style={styles.editJobButton}
+            activeOpacity={0.8}
+            onPress={() =>
+              router.push({
+                pathname: "/(public)/(tabs)/home/create-job",
+                params: { jobId: job.id },
+              })
+            }
+          >
+            <Ionicons name="create-outline" size={20} color="#FF6B35" />
+            <Text style={styles.editJobButtonText}>Edit Job</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            accessibilityRole="button"
+            disabled={deletingJobId !== null}
+            style={[
+              styles.deleteJobButton,
+              deletingJobId !== null && styles.disabledActionButton,
+            ]}
+            activeOpacity={0.8}
+            onPress={handleDeleteJob}
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Ionicons name="trash-outline" size={20} color="#FFFFFF" />
+            )}
+            <Text style={styles.deleteJobButtonText}>
+              {isDeleting ? "Deleting..." : "Delete Job"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {isOpen && isWorkerViewer && (
         <View style={styles.bottomContainer}>
@@ -1073,6 +1159,46 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: "#FF6B35",
     borderRadius: 10,
+  },
+
+  editJobButton: {
+    flex: 1,
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#FF6B35",
+    borderRadius: 10,
+    backgroundColor: "#FFF5F0",
+  },
+
+  editJobButtonText: {
+    color: "#FF6B35",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  deleteJobButton: {
+    flex: 1,
+    height: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 10,
+    backgroundColor: "#DC2626",
+  },
+
+  deleteJobButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  disabledActionButton: {
+    opacity: 0.6,
   },
 
   messageCustomerButton: {

@@ -7,6 +7,7 @@ import {
   fetchJobById,
   fetchWorkerById,
 } from "./homeThunk";
+import { deleteCustomerJob } from "../customer/customerThunk";
 
 interface HomeState extends HomeData {
   allWorkers: HomeWorker[];
@@ -91,6 +92,15 @@ const homeSlice = createSlice({
         state.isLoadingAllJobs = false;
         state.allJobsError =
           action.payload ?? action.error.message ?? "Request failed";
+      })
+      .addCase(deleteCustomerJob.fulfilled, (state, action) => {
+        state.recentJobs = state.recentJobs.filter(
+          (job) => job.id !== action.payload,
+        );
+        state.allJobs = state.allJobs.filter(
+          (job) => job.id !== action.payload,
+        );
+        delete state.jobsById[action.payload];
       })
       .addCase(fetchWorkerById.pending, (state, action) => {
         state.workerDetailsLoading[action.meta.arg] = true;

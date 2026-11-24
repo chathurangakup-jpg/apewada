@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { removeStoredAuthToken } from "../auth/authServices";
+import { deactivateSavedPushToken } from "../notifications/notificationServices";
 import {
   CurrentUserProfile,
   UpdateCustomerProfilePayload,
@@ -146,6 +147,17 @@ export const logoutCurrentUser = createAsyncThunk<
   ProfileThunkConfig
 >("profile/logoutCurrentUser", async (_, { rejectWithValue }) => {
   try {
+    const token = await getSavedSessionToken();
+    if (token) {
+      try {
+        await deactivateSavedPushToken(token);
+      } catch (error) {
+        console.error(
+          "Unable to deactivate the push token during logout:",
+          error,
+        );
+      }
+    }
     await removeStoredAuthToken();
   } catch (error) {
     return rejectWithValue(

@@ -25,6 +25,7 @@ const paperIconNames: Record<string, ComponentProps<typeof Ionicons>["name"]> =
 export default function RootLayout() {
   return (
     <StoreProvider>
+      {/* <PushNotificationManager /> */}
       <SafeAreaProvider>
         <PaperProvider
           settings={{

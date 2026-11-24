@@ -9,6 +9,7 @@ import {
 } from "../bookings/bookingThunk";
 import { CustomerJob } from "./customerServices";
 import {
+  deleteCustomerJob,
   editCustomerJob,
   fetchCustomerBookings,
   fetchCustomerJobs,
@@ -23,6 +24,7 @@ interface CustomerState {
   jobsError: string | null;
   bookingsError: string | null;
   isSubmitting: boolean;
+  deletingJobId: string | null;
   error: string | null;
 }
 
@@ -34,6 +36,7 @@ const initialState: CustomerState = {
   jobsError: null,
   bookingsError: null,
   isSubmitting: false,
+  deletingJobId: null,
   error: null,
 };
 
@@ -92,6 +95,21 @@ const customerSlice = createSlice({
       .addCase(editCustomerJob.rejected, (state, action) => {
         state.isSubmitting = false;
         state.error = action.payload ?? action.error.message ?? "Request failed";
+      })
+      .addCase(deleteCustomerJob.pending, (state, action) => {
+        state.deletingJobId = action.meta.arg;
+        state.jobsError = null;
+      })
+      .addCase(deleteCustomerJob.fulfilled, (state, action) => {
+        state.deletingJobId = null;
+        state.postedJobs = state.postedJobs.filter(
+          (job) => job.id !== action.payload,
+        );
+      })
+      .addCase(deleteCustomerJob.rejected, (state, action) => {
+        state.deletingJobId = null;
+        state.jobsError =
+          action.payload ?? action.error.message ?? "Unable to delete your job";
       })
       .addCase(fetchCustomerBookings.pending, (state) => {
         state.isLoadingBookings = true;

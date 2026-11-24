@@ -136,7 +136,17 @@ export default function PublicHomeScreen() {
         job.customerId === authenticatedUser?.id,
     );
 
-    return isCustomer ? [...customerPostedJobs, ...publicJobs] : publicJobs;
+    if (!isCustomer) {
+      return publicJobs;
+    }
+
+    const customerJobIds = new Set(
+      customerPostedJobs.map((job) => job.id),
+    );
+    return [
+      ...customerPostedJobs,
+      ...publicJobs.filter((job) => !customerJobIds.has(job.id)),
+    ];
   }, [authenticatedUser?.id, customerPostedJobs, isCustomer, recentJobs]);
 
   const filteredJobs = useMemo(

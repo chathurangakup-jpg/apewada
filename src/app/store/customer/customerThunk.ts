@@ -6,6 +6,7 @@ import {
   CustomerJobDraft,
   CustomerJobImageRequest,
   CustomerJobUpload,
+  deleteCustomerJob as deleteCustomerJobRequest,
   getCustomerJobs,
   getCustomerBookings,
   updateCustomerJob,
@@ -126,6 +127,25 @@ export const editCustomerJob = createAsyncThunk<
     } catch (error) {
       return rejectWithValue(
         error instanceof Error ? error.message : "Unable to update your job",
+      );
+    }
+  },
+);
+
+export const deleteCustomerJob = createAsyncThunk<
+  string,
+  string,
+  { rejectValue: string }
+>(
+  "customer/deleteJob",
+  async (jobId, { getState, rejectWithValue }) => {
+    try {
+      const { token } = await getSession(getState);
+      await deleteCustomerJobRequest(token, jobId);
+      return jobId;
+    } catch (error) {
+      return rejectWithValue(
+        error instanceof Error ? error.message : "Unable to delete your job",
       );
     }
   },
