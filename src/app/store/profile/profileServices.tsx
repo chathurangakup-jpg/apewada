@@ -1,4 +1,6 @@
 import { getStoredAuthToken } from "../auth/authServices";
+import type { Booking } from "../bookings/bookingServices";
+import type { WorkerReview } from "../workers/workerReview.types";
 
 // export interface ProfileCategory {
 //   id: string;
@@ -145,12 +147,15 @@ export interface CurrentWorkerProfile {
   approval_status?: string;
   availability_status?: string;
   average_rating?: string | number;
+  averageRating?: string | number;
   review_count?: number;
+  reviewCount?: number;
   categories?: ProfileCategory[];
   experiences?: WorkerExperienceRecord[];
   education?: WorkerEducationRecord[];
   portfolio?: WorkerPortfolioRecord[];
-  bookingRequests?: unknown[];
+  bookingRequests?: Booking[];
+  reviews?: WorkerReview[];
 }
 
 export interface AuthUser {

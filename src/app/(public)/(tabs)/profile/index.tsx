@@ -1,5 +1,7 @@
 // Profile screen.
 import LanguageSelector from "@/components/Profile/LanguageSelector";
+import WorkerBookingRequests from "@/components/WorkerBookingRequests";
+import WorkerRatingModal from "@/components/WorkerRatingModal";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
@@ -40,8 +42,8 @@ import {
   fetchCurrentProfile,
   logoutCurrentUser,
   updateCustomerProfile as updateApiCustomerProfile,
-  updateWorkerAvailabilityStatus,
   updateWorkerProfile as updateApiWorkerProfile,
+  updateWorkerAvailabilityStatus,
 } from "../../../store/profile/profileThunk";
 import { selectCustomerProfile } from "../../../store/users/userSelectors";
 import {
@@ -95,7 +97,10 @@ export default function ProfileScreen() {
           "Worker",
         category: workerCategories[0]?.slug ?? "",
         rating: Number(apiProfile.average_rating ?? 0),
-        totalJobs: apiProfile.bookingRequests?.length ?? 0,
+        totalJobs:
+          apiProfile.bookingRequests?.filter(
+            (booking) => booking.status.toUpperCase() === "COMPLETED",
+          ).length ?? 0,
         verified: apiProfile.approval_status === "APPROVED",
         location:
           apiProfile.district || apiProfile.city || apiProfile.venue
@@ -141,6 +146,7 @@ export default function ProfileScreen() {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [langModalVisible, setLangModalVisible] = useState(false);
   const [currentLang, setCurrentLang] = useState(i18n.language || "en");
+  const [workerRatingsVisible, setWorkerRatingsVisible] = useState(false);
   const [editData, setEditData] = useState<ProfileEditData>({
     address: "",
     district: "",
@@ -433,9 +439,7 @@ export default function ProfileScreen() {
   const handleAvailabilityChange = async (available: boolean) => {
     try {
       await dispatch(
-        updateWorkerAvailabilityStatus(
-          available ? "AVAILABLE" : "UNAVAILABLE",
-        ),
+        updateWorkerAvailabilityStatus(available ? "AVAILABLE" : "UNAVAILABLE"),
       ).unwrap();
     } catch (error) {
       Alert.alert(
@@ -627,12 +631,17 @@ export default function ProfileScreen() {
               <Text style={styles.statLabel}>{t("profile.jobsDone")}</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
+            <TouchableOpacity
+              accessibilityRole="button"
+              accessibilityLabel="Show worker ratings"
+              style={styles.statItem}
+              onPress={() => setWorkerRatingsVisible(true)}
+            >
               <Text style={styles.statNumber}>
                 {workerProfile?.rating?.toFixed(1) || "0.0"}
               </Text>
               <Text style={styles.statLabel}>{t("profile.rating")}</Text>
-            </View>
+            </TouchableOpacity>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statNumber}>
@@ -651,6 +660,19 @@ export default function ProfileScreen() {
           )}
         </Card.Content>
       </Card>
+
+      {!!apiProfile?.bookingRequests?.length && (
+        <WorkerBookingRequests requests={apiProfile.bookingRequests} />
+      )}
+      <WorkerRatingModal
+        visible={workerRatingsVisible}
+        rating={
+          Number(apiProfile?.average_rating ?? apiProfile?.averageRating) || 0
+        }
+        reviewCount={apiProfile?.review_count ?? apiProfile?.reviewCount ?? 0}
+        reviews={apiProfile?.reviews ?? []}
+        onClose={() => setWorkerRatingsVisible(false)}
+      />
 
       {workerProfile?.location && (
         <Card style={styles.infoCard}>

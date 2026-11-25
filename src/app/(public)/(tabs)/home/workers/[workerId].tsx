@@ -1,4 +1,5 @@
 // app/(public)/worker/[id].tsx
+import { selectApiAuthUser } from "@/app/store/auth/authSelector";
 import {
   selectWorkerById,
   selectWorkerDetailsError,
@@ -6,9 +7,10 @@ import {
 } from "@/app/store/home/homeSelector";
 import { fetchWorkerById } from "@/app/store/home/homeThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
-import { selectApiAuthUser } from "@/app/store/auth/authSelector";
 import { selectCurrentUser } from "@/app/store/profile/profileSelector";
 import Header from "@/components/Splash/commonComponents/Header";
+import WorkerBookingRequests from "@/components/WorkerBookingRequests";
+import WorkerRatingModal from "@/components/WorkerRatingModal";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -49,6 +51,7 @@ export default function WorkerDetailsScreen() {
   const { t } = useTranslation();
 
   const [isExpanded, setIsExpanded] = useState(false);
+  const [ratingsVisible, setRatingsVisible] = useState(false);
 
   useEffect(() => {
     if (workerId && !worker && !isLoading && !error) {
@@ -115,6 +118,10 @@ export default function WorkerDetailsScreen() {
   const workerExperiences = worker.experiences ?? [];
   const workerEducation = worker.education ?? [];
   const workerPortfolio = worker.portfolio ?? [];
+  const completedBookingCount =
+    worker.bookingRequests?.filter(
+      (request) => request.status.toUpperCase() === "COMPLETED",
+    ).length ?? 0;
   const toggleDescription = () => {
     setIsExpanded(!isExpanded);
   };
@@ -157,21 +164,27 @@ export default function WorkerDetailsScreen() {
 
         {/* Rating and Stats */}
         <View style={styles.statsContainer}>
-          <View style={styles.statItem}>
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Show worker ratings"
+            style={styles.statItem}
+            onPress={() => setRatingsVisible(true)}
+          >
             <View style={styles.ratingRow}>
               <Ionicons name="star" size={20} color="#FFB800" />
               <Text style={styles.ratingText}>
-                {worker.rating?.toFixed(1) ||
-                  Number(worker.averageRating || 0).toFixed(1)}
+                {(worker.rating ?? Number(worker.averageRating || 0)).toFixed(
+                  1,
+                )}
               </Text>
             </View>
             <Text style={styles.statLabel}>{t("worker.rating")}</Text>
-          </View>
+          </TouchableOpacity>
 
           <View style={styles.statDivider} />
 
           <View style={styles.statItem}>
-            <Text style={styles.statNumber}>{worker.totalJobs || 0}</Text>
+            <Text style={styles.statNumber}>{completedBookingCount}</Text>
             <Text style={styles.statLabel}>{t("worker.jobsDone")}</Text>
           </View>
 
@@ -205,7 +218,9 @@ export default function WorkerDetailsScreen() {
               onPress={handleMessage}
             >
               <Ionicons name="chatbubble-outline" size={20} color="#FF6B35" />
-              <Text style={styles.messageButtonText}>{t("worker.message")}</Text>
+              <Text style={styles.messageButtonText}>
+                {t("worker.message")}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.hireButton} onPress={handleHire}>
@@ -213,6 +228,13 @@ export default function WorkerDetailsScreen() {
             </TouchableOpacity>
           </View>
         )}
+        <WorkerRatingModal
+          visible={ratingsVisible}
+          rating={worker.rating ?? Number(worker.averageRating || 0)}
+          reviewCount={worker.reviewCount ?? 0}
+          reviews={worker.reviews ?? []}
+          onClose={() => setRatingsVisible(false)}
+        />
       </View>
 
       <Card style={styles.infoCard}>
@@ -258,6 +280,12 @@ export default function WorkerDetailsScreen() {
             )}
           </Card.Content>
         </Card>
+      )}
+
+      {worker.bookingRequests && (
+        <View style={styles.infoCard}>
+          <WorkerBookingRequests requests={worker.bookingRequests} />
+        </View>
       )}
 
       {workerExperiences.length > 0 && (
@@ -306,9 +334,7 @@ export default function WorkerDetailsScreen() {
               <Text style={styles.sectionTitle}>{t("worker.education")}</Text>
             </View>
             {worker.educationSummary && (
-              <Text style={styles.description}>
-                {worker.educationSummary}
-              </Text>
+              <Text style={styles.description}>{worker.educationSummary}</Text>
             )}
             {workerEducation.map((education, index) => (
               <View key={education.id}>

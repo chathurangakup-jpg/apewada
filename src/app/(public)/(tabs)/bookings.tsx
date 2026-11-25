@@ -17,6 +17,7 @@ import {
 } from "@/app/store/bookings/bookingThunk";
 import { useAppDispatch, useAppSelector } from "@/app/store/hooks";
 import { selectCurrentUser } from "@/app/store/profile/profileSelector";
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -90,6 +91,39 @@ export default function BookingsScreen() {
     if (submitting) return;
     setCancellationBookingId(null);
     setCancellationReason("");
+  };
+
+  const closeReviewModal = () => {
+    if (submitting) return;
+    setReviewBookingId(null);
+    setRating("5");
+    setComment("");
+  };
+
+  const submitReview = async () => {
+    if (!reviewBookingId) return;
+
+    const value = Number(rating);
+    if (!Number.isInteger(value) || value < 1 || value > 5) {
+      Alert.alert("Review", "Rating must be a whole number from 1 to 5.");
+      return;
+    }
+
+    try {
+      await dispatch(
+        submitBookingReview({
+          bookingId: reviewBookingId,
+          rating: value,
+          comment: comment.trim() || undefined,
+        }),
+      ).unwrap();
+      closeReviewModal();
+    } catch (reviewError) {
+      Alert.alert(
+        "Unable to submit review",
+        typeof reviewError === "string" ? reviewError : "Please try again.",
+      );
+    }
   };
 
   const confirmCancellation = async () => {
@@ -261,11 +295,14 @@ export default function BookingsScreen() {
                   </TouchableOpacity>
                 )}
               {role === "CUSTOMER" &&
-                booking.status.toUpperCase() === "COMPLETED" &&
-                booking.jobId && (
+                booking.status.toUpperCase() === "COMPLETED" && (
                   <TouchableOpacity
                     style={styles.primaryButton}
-                    onPress={() => setReviewBookingId(booking.id)}
+                    onPress={() => {
+                      setRating("5");
+                      setComment("");
+                      setReviewBookingId(booking.id);
+                    }}
                   >
                     <Text style={styles.primaryText}>Review worker</Text>
                   </TouchableOpacity>
@@ -274,48 +311,74 @@ export default function BookingsScreen() {
           );
         })
       )}
-      {reviewBookingId && (
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Review worker</Text>
-          <TextInput
-            value={rating}
-            onChangeText={setRating}
-            keyboardType="number-pad"
-            placeholder="Rating (1-5)"
-            style={styles.input}
-          />
-          <TextInput
-            value={comment}
-            onChangeText={setComment}
-            placeholder="Comment (optional)"
-            multiline
-            style={[styles.input, styles.comment]}
-          />
-          <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={() => {
-              const value = Number(rating);
-              if (!Number.isInteger(value) || value < 1 || value > 5) {
-                Alert.alert(
-                  "Review",
-                  "Rating must be a whole number from 1 to 5.",
+      <Modal
+        visible={reviewBookingId !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={closeReviewModal}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.cardTitle}>Review worker</Text>
+            <Text style={styles.detail}>Tap a star to rate the worker.</Text>
+            <View style={styles.ratingPicker}>
+              {[1, 2, 3, 4, 5].map((value) => {
+                const selected = value <= Number(rating);
+                return (
+                  <TouchableOpacity
+                    key={value}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${value} star${value === 1 ? "" : "s"}`}
+                    accessibilityState={{ selected, disabled: submitting }}
+                    disabled={submitting}
+                    style={styles.ratingStar}
+                    onPress={() => setRating(String(value))}
+                  >
+                    <Ionicons
+                      name={selected ? "star" : "star-outline"}
+                      size={36}
+                      color={selected ? "#F59E0B" : "#9CA3AF"}
+                    />
+                  </TouchableOpacity>
                 );
-                return;
-              }
-              void dispatch(
-                submitBookingReview({
-                  bookingId: reviewBookingId,
-                  rating: value,
-                  comment: comment.trim() || undefined,
-                }),
-              );
-              setReviewBookingId(null);
-            }}
-          >
-            <Text style={styles.primaryText}>Submit review</Text>
-          </TouchableOpacity>
+              })}
+            </View>
+            <Text style={styles.ratingLabel}>{rating} out of 5</Text>
+            <TextInput
+              value={comment}
+              onChangeText={setComment}
+              placeholder="Comment (optional)"
+              multiline
+              editable={!submitting}
+              style={[styles.input, styles.comment]}
+              textAlignVertical="top"
+            />
+            <View style={styles.actions}>
+              <TouchableOpacity
+                disabled={submitting}
+                style={styles.rejectButton}
+                onPress={closeReviewModal}
+              >
+                <Text style={styles.rejectText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={submitting}
+                style={[
+                  styles.primaryButton,
+                  submitting && styles.disabledButton,
+                ]}
+                onPress={() => void submitReview()}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.primaryText}>Submit review</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      )}
+      </Modal>
       <Modal
         visible={cancellationBookingId !== null}
         transparent
@@ -381,6 +444,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: { fontSize: 17, fontWeight: "700", color: "#111827" },
   detail: { color: "#4B5563" },
+  ratingPicker: {
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  ratingStar: { padding: 2 },
+  ratingLabel: {
+    color: "#4B5563",
+    fontWeight: "600",
+    textAlign: "center",
+  },
   input: {
     height: 46,
     borderWidth: 1,

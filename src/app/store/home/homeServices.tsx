@@ -1,3 +1,6 @@
+import type { Booking } from "../bookings/bookingServices";
+import type { WorkerReview } from "../workers/workerReview.types";
+
 export interface HomeCategory {
   id: string;
   nameEn: string;
@@ -79,6 +82,8 @@ export interface HomeWorker {
     schedule?: string[];
   };
   certifications?: string[];
+  bookingRequests?: Booking[];
+  reviews?: WorkerReview[];
 }
 export interface HomeJob {
   id: string;
@@ -176,6 +181,64 @@ function getNumber(...values: unknown[]): number | undefined {
   }
 
   return undefined;
+}
+
+function normalizeBookingRequests(value: unknown): Booking[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+
+    const rawId = item.id;
+    if (typeof rawId !== "string" && typeof rawId !== "number") return [];
+
+    return [
+      {
+        id: String(rawId),
+        jobId:
+          typeof item.jobId === "string" ? item.jobId : null,
+        jobTitle:
+          typeof item.jobTitle === "string" ? item.jobTitle : null,
+        scheduledDate:
+          typeof item.scheduledDate === "string"
+            ? item.scheduledDate
+            : undefined,
+        startTime:
+          typeof item.startTime === "string" ? item.startTime : null,
+        endTime: typeof item.endTime === "string" ? item.endTime : null,
+        status: getString(item.status) ?? "UNKNOWN",
+      },
+    ];
+  });
+}
+
+function normalizeWorkerReviews(value: unknown): WorkerReview[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item) => {
+    if (!isRecord(item)) return [];
+
+    const rawId = item.id;
+    const rating = getNumber(item.rating);
+    if (
+      (typeof rawId !== "string" && typeof rawId !== "number") ||
+      rating === undefined
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        id: String(rawId),
+        jobId: getString(item.jobId) ?? "",
+        jobTitle: getString(item.jobTitle) ?? "Job",
+        customerName: getString(item.customerName) ?? "Customer",
+        rating,
+        comment: getString(item.comment) ?? "",
+        createdAt: getString(item.createdAt) ?? "",
+      },
+    ];
+  });
 }
 
 function getResponseCollection(
@@ -537,6 +600,8 @@ function normalizeWorker(value: unknown): HomeWorker {
       (certification): certification is string =>
         typeof certification === "string",
     ),
+    bookingRequests: normalizeBookingRequests(value.bookingRequests),
+    reviews: normalizeWorkerReviews(value.reviews),
   };
 }
 
